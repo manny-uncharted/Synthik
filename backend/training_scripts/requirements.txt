@@ -1,0 +1,6 @@
+scikit-learn
+pandas
+# datasets and transformers are usually part of HF/PyTorch SageMaker images
+# but add them if you need a very specific version not in the image
+# datasets==2.14.5 
+# transformers==4.33.0

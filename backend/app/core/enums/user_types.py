@@ -1,0 +1,15 @@
+
+from enum import Enum
+
+class UserType(Enum):
+    SUPPORT = "SUPPORT"
+    SPONSOR = "SPONSOR"
+    USER = "USER"
+    CREATOR = "CREATOR"
+    ADVERTISER = "ADVERTISER"
+    ANNOTATOR = "ANNOTATOR"
+    ANALYTICS = "ANALYTICS"
+    FINANCE = "FINANCE"
+    REVIEWER = "REVIEWER"
+    ADMIN = "ADMIN"
+    SUPERADMIN = "SUPERADMIN"

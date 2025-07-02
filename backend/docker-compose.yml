@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+
+  web:
+    image: datahive-backend
+    build: 
+      context: .                # Use the root directory for building the image
+      dockerfile: Dockerfile    # Use your Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      SQLALCHEMY_DATABASE_URL: ${SQLALCHEMY_DATABASE_URL}
+      BASE_URL: ${BASE_URL}
+      API_KEY: ${API_KEY}
+      REDIS_URL: ${BASE_URL}
+      LILYPAD_API_KEY: ${LILYPAD_API_KEY}
+
+  # redis:
+  #   image: redis:alpine
+
+  # celery_worker:
+  #   build: .
+  #   command: celery -A app.celery.celery.celery_app worker --loglevel=info
+  #   depends_on:
+  #     - redis
+  #   environment:
+  #     SQLALCHEMY_DATABASE_URL: ${SQLALCHEMY_DATABASE_URL}
+  #     BASE_URL: ${BASE_URL}
+  #     API_KEY: ${API_KEY}
+  #     REDIS_URL: ${BASE_URL}
+
+  # celery_beat:
+  #   build: .
+  #   command: celery -A app.celery.celery.celery_app beat --loglevel=info
+  #   depends_on:
+  #     - redis
+  #   environment:
+  #     SQLALCHEMY_DATABASE_URL: ${SQLALCHEMY_DATABASE_URL}
+  #     BASE_URL: ${BASE_URL}
+  #     API_KEY: ${API_KEY}
+  #     REDIS_URL: ${BASE_URL}
+
+
+  akave:
+    image: akave/akavelink:latest
+    ports:
+      - "8001:3000"  # Maps container port 3000 to host port 8001
+    environment:
+      NODE_ADDRESS: "connect.akave.ai:5500"    # Public node address as per Akave docs
+      PRIVATE_KEY: "${AKAVE_PRIVATE_KEY}"       # Use an environment variable or directly assign your private key

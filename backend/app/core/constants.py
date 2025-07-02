@@ -1,0 +1,54 @@
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+JWT_ALGORITHM = "HS256"
+JWT_EXPIRATION_MINUTES = 60
+JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")
+ACCESS_TOKEN_EXPIRE_MINUTES = int(
+    os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 30)
+)  # For session tokens
+SQLALCHEMY_DATABASE_URL = os.getenv("SQLALCHEMY_DATABASE_URL")
+BASE_URL = os.getenv("BASE_URL")
+API_KEY= os.getenv("API_KEY")
+REDIS_URL = os.getenv("REDIS_URL")
+LILYPAD_API_KEY = os.getenv("LILYPAD_API_KEY")
+AKAVE_PRIVATE_KEY = os.getenv("AKAVE_PRIVATE_KEY")
+FASTAPI_BASE_URL = os.getenv("FASTAPI_BASE_URL", "http://localhost:8000")
+FASTAPI_BASE_URL_CAMPAIGN_API = os.getenv("FASTAPI_BASE_URL_CAMPAIGN_API", None)
+API_KEY= os.getenv("API_KEY", "")
+# REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/1")
+REDIS_URL = "redis://redis:6379/1"
+GOOGLE_GEMINI_KEY = os.getenv("GOOGLE_GEMINI_KEY")
+os.environ["GOOGLE_API_KEY"] = os.getenv("GOOGLE_GEMINI_KEY")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+DATASET_VERIFIER_WORKFLOW_ID = "ai_dataset_contribution_verifier_v1"
+DATASET_VERIFIER_WORKFLOW_NAME_TEMPLATE = "AIDatasetContributionVerifier_SystemDefault"
+MLOPS_ENCRYPTION_KEY = os.getenv("MLOPS_ENCRYPTION_KEY", "")
+FASTAPI_BASE_URL_CAMPAIGN_API = os.getenv("FASTAPI_BASE_URL_CAMPAIGN_API", "")
+WEBHOOK_SHARED_SECRET = os.getenv("WEBHOOK_SHARED_SECRET", "")
+
+AWS_ACCESS_KEY_ID_MLOPS = os.getenv("AWS_ACCESS_KEY_ID_MLOPS", "")
+AWS_SECRET_ACCESS_KEY_MLOPS = os.getenv("AWS_SECRET_ACCESS_KEY_MLOPS", "")
+AWS_REGION_MLOPS = os.getenv("AWS_REGION_MLOPS", "us-east-1")
+
+HUGGING_FACE_HUB_TOKEN_MLOPS = os.getenv("HUGGING_FACE_HUB_TOKEN_MLOPS", "")
+# AGGREGATOR_URL = "https://walrus.bnshub.org/aggregator/"
+PUBLISHER_URL = "https://publisher.walrus-testnet.walrus.space"
+AGGREGATOR_URL = "https://aggregator.walrus-testnet.walrus.space"
+# PUBLISHER_URL = "https://walrus-publisher.rubynodes.io"
+# AGGREGATOR_URL = "https://walrus-aggregator.rubynodes.io"
+# AGGREGATOR_URL = "http://44.211.230.232:8080"
+# PUBLISHER_URL = "http://44.211.230.232:8081"
+TESTING_MODE_BYPASS_WEBHOOK_AUTH=True
+LOCAL_TRAINING_RUNS_DIR = os.getenv("LOCAL_TRAINING_RUNS_DIR", "/tmp/ai_platform_training_runs")
+LOCAL_TRAINING_BASE_DIR = os.getenv("LOCAL_TRAINING_BASE_DIR", "/tmp/ai_platform_training_runs")
+LOCAL_TRAINING_SCRIPTS_REPO_DIR = os.getenv("LOCAL_TRAINING_SCRIPTS_REPO_DIR", "./training_scripts")
+AWS_SAGEMAKER_DEFAULT_OUTPUT_BUCKET = os.getenv("AWS_SAGEMAKER_DEFAULT_OUTPUT_BUCKET", "astora-go-api")
+SAGEMAKER_SCRIPT_STAGING_DIR = os.getenv("SAGEMAKER_SCRIPT_STAGING_DIR", "/tmp/sagemaker_script_staging")
+SAGEMAKER_DEFAULT_OUTPUT_S3_BUCKET = os.getenv("SAGEMAKER_DEFAULT_OUTPUT_S3_BUCKET", "astora-go-api")
+GCP_VERTEX_AI_DEFAULT_STAGING_BUCKET = os.getenv("GCP_VERTEX_AI_DEFAULT_STAGING_BUCKET", "my-vertex-ai-mlops-staging-bucket")
+GCP_VERTEX_AI_TENSORBOARD_INSTANCE_NAME = os.getenv("GCP_VERTEX_AI_TENSORBOARD_INSTANCE_NAME", "my-vertex-ai-mlops-tensorboard")
+GCP_PROJECT_ID_MLOPS = os.getenv("GCP_PROJECT_ID_MLOPS", "my-gcp-project-mlops")
+GCP_SERVICE_ACCOUNT_KEY_PATH_MLOPS = os.getenv("GCP_SERVICE_ACCOUNT_KEY_PATH_MLOPS", "./service_account_key.json")
