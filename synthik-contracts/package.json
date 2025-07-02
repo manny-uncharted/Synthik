@@ -1,0 +1,28 @@
+{
+  "name": "datahive-filecoin-contracts",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "deploy:calibration": "hardhat run scripts/deploy.ts --network filecoin-calibration",
+    "deploy:local": "hardhat run scripts/deploy.ts --network localhost",
+    "verify:calibration": "hardhat verify --network filecoin-calibration",
+    "demo:creator": "hardhat run scripts/demos/01-dataset-creator-flow.ts --network filecoin-calibration",
+    "demo:consumer": "hardhat run scripts/demos/02-dataset-consumer-flow.ts --network filecoin-calibration",
+    "demo:marketplace": "hardhat run scripts/demos/03-marketplace-flow.ts --network filecoin-calibration",
+    "demo:lineage": "hardhat run scripts/demos/04-lineage-tracking-flow.ts --network filecoin-calibration",
+    "demo:all": "npm run demo:creator && npm run demo:consumer && npm run demo:marketplace && npm run demo:lineage"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@openzeppelin/contracts": "^4.9.0",
+    "hardhat": "^2.17.0"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7"
+  }
+}

@@ -1,0 +1,336 @@
+# SYNTHIK PLATFORM - COMPLETE USER FLOW DOCUMENTATION
+
+## Overview
+Synthik is a decentralized platform for creating, sharing, and monetizing synthetic datasets with complete provenance tracking. The platform consists of three main smart contracts working together to provide a seamless experience.
+
+## Current System Architecture
+
+### Smart Contracts:
+1. **ProvenanceManager** - Core data storage and lineage tracking
+2. **DatasetRegistry** - Access control and relationship management  
+3. **DatasetMarketplace** - Economic layer for buying/selling datasets
+4. **AutoAccessManager** - (Optional) Automated access granting
+
+---
+
+## USER FLOWS
+
+### 1. DATASET CREATOR FLOW
+
+#### Step 1: Create Dataset
+```
+User Action: Generate synthetic data using AI models
+Platform: Frontend application with dataset creation wizard
+
+Process:
+1. User selects dataset type (scratch/template/upload/transform)
+2. User configures generation parameters:
+   - AI model selection (GPT-4, Claude, etc.)
+   - Schema definition
+   - Number of rows
+   - Quality settings
+   - Generation parameters (temperature, etc.)
+3. User provides metadata:
+   - Dataset name and description
+   - Tags and categories
+   - License type
+4. Frontend calls: ProvenanceManager.createDataset()
+   - Stores dataset CID (Filecoin)
+   - Stores metadata CID (IPFS)
+   - Records generation configuration
+   - Assigns creator ownership
+
+Result: Dataset is created and owned by user
+```
+
+#### Step 2: Set Up Access Control (Optional)
+```
+User Action: Configure who can access the dataset
+Platform: DatasetRegistry contract
+
+Options:
+A) Manual Access Control:
+   - Users request access manually
+   - Owner reviews and approves each request
+   
+B) Automated Access Control:
+   - Owner sets up AutoAccessManager rules:
+     * Allowed purposes (academic, commercial, research)
+     * User requirements (verification, reputation)
+     * Time limits and user caps
+   - Users get automatic access if they meet criteria
+
+Process:
+1. User calls: AutoAccessManager.createAccessRule()
+2. Sets parameters for automatic granting
+3. Users can now get instant access via: AutoAccessManager.requestAutoAccess()
+
+Result: Access control is configured
+```
+
+#### Step 3: List Dataset for Sale (Optional)
+```
+User Action: Monetize dataset through marketplace
+Platform: DatasetMarketplace contract
+
+Process:
+1. User sets pricing:
+   - Fixed price (no longer per-row)
+   - Payment token (ETH or ERC20)
+   - License type (personal/commercial/academic/enterprise)
+   - Maximum licenses (optional limit)
+   - Royalty percentage for future usage
+2. User calls: DatasetMarketplace.listDataset()
+3. Dataset becomes available for purchase
+
+Result: Dataset is listed on marketplace
+```
+
+### 2. DATASET CONSUMER FLOW
+
+#### Step 1: Discover Datasets
+```
+User Action: Browse and search for relevant datasets
+Platform: Frontend with DatasetRegistry integration
+
+Process:
+1. User searches datasets:
+   - By category, tags, quality level
+   - By generation type, size, creator
+   - Frontend calls: DatasetRegistry.searchDatasets()
+2. User views dataset details:
+   - Provenance information
+   - Schema and preview data
+   - Quality metrics and verification status
+   - Pricing and license information
+   - Usage examples and related datasets
+
+Result: User finds relevant datasets
+```
+
+#### Step 2: Gain Access to Dataset
+
+#### Option A: Free/Academic Access
+```
+User Action: Request access for research/academic use
+Platform: DatasetRegistry or AutoAccessManager
+
+Manual Process:
+1. User calls: DatasetRegistry.requestAccess(datasetId, purpose)
+2. Request goes to dataset owner for review
+3. Owner manually calls: DatasetRegistry.grantAccess()
+4. User receives access notification
+
+Automated Process (if rules exist):
+1. User calls: AutoAccessManager.requestAutoAccess(datasetId, purpose)
+2. System checks user profile and access rules
+3. If criteria met, access granted immediately
+4. If not, falls back to manual process
+
+Result: User has access to dataset
+```
+
+#### Option B: Purchase Dataset
+```
+User Action: Buy commercial license for dataset
+Platform: DatasetMarketplace contract
+
+Process:
+1. User views pricing information
+2. User calls: DatasetMarketplace.purchaseDataset(datasetId, usageTerms)
+3. Payment processed (ETH or ERC20 token):
+   - Marketplace fee deducted (2.5% default)
+   - Remaining amount sent to dataset creator
+4. License issued and recorded
+5. Access automatically granted via: DatasetRegistry.grantAccess()
+6. User can immediately use dataset
+
+Result: User owns commercial license and has access
+```
+
+#### Step 3: Use Dataset for Model Training
+```
+User Action: Train ML models using the dataset
+Platform: External ML platforms with Synthik integration
+
+Process:
+1. User verifies access: DatasetRegistry.checkAccess()
+2. User downloads dataset using Filecoin CID
+3. User trains model on external platform (Hugging Face, etc.)
+4. User records training activity: ProvenanceManager.recordModelTraining()
+   - Model ID and configuration
+   - Training metrics and results
+   - Links model back to source dataset
+5. If royalties required: DatasetMarketplace.payRoyalty()
+
+Result: Model is trained and provenance is recorded
+```
+
+### 3. ECOSYSTEM PARTICIPANT FLOWS
+
+#### Data Verifier Flow
+```
+Role: Quality assurance and verification
+Platform: ProvenanceManager contract
+
+Process:
+1. Verifier reviews dataset quality
+2. Runs validation tests and checks
+3. Calls: ProvenanceManager.submitQualityMetrics()
+   - Completeness, consistency, accuracy scores
+   - Uniqueness and timeliness ratings
+   - Validation report CID
+4. Dataset quality level automatically calculated
+5. Verified datasets get higher visibility
+
+Result: Dataset has verified quality metrics
+```
+
+#### Curator Flow  
+```
+Role: Organize and manage dataset collections
+Platform: DatasetRegistry contract
+
+Process:
+1. Curator identifies related datasets
+2. Creates themed collections: DatasetRegistry.createCollection()
+3. Manages relationships: DatasetRegistry.createRelationship()
+4. Helps users discover relevant datasets
+5. Can batch-grant access to collections
+
+Result: Better dataset organization and discovery
+```
+
+#### Institution Administrator Flow
+```
+Role: Manage access for large organizations
+Platform: AutoAccessManager contract
+
+Process:
+1. Admin verifies institution members: AutoAccessManager.verifyInstitution()
+2. Sets up bulk access rules for academic/research use
+3. Manages user profiles and reputation scores
+4. Monitors usage and compliance
+5. Can grant batch access: DatasetRegistry.batchGrantAccess()
+
+Result: Streamlined access for institutional users
+```
+
+---
+
+## TECHNICAL INTEGRATION POINTS
+
+### Frontend Integration
+```
+React/Next.js Application:
+- Web3 wallet connection (MetaMask, WalletConnect)
+- Smart contract interactions via ethers.js
+- IPFS integration for metadata storage
+- Filecoin integration for dataset storage
+- Real-time event listening for updates
+- Payment processing for marketplace transactions
+```
+
+### Backend Services
+```
+Optional Backend Components:
+- Indexing service for fast dataset search
+- Notification service for access requests
+- Analytics service for usage tracking
+- File management service for IPFS/Filecoin
+- Identity verification service for institutions
+```
+
+### External Integrations
+```
+ML Platform Integrations:
+- Hugging Face model training
+- Google Colab notebooks
+- Jupyter environments
+- Custom ML pipelines
+- Model deployment services
+```
+
+---
+
+## CURRENT STATE SUMMARY
+
+### What Works Now:
+✅ Dataset creation with full provenance tracking
+✅ Manual access control and requests
+✅ Fixed-price marketplace transactions
+✅ Model training lineage recording
+✅ Quality verification system
+✅ Dataset relationships and collections
+✅ Batch operations for efficiency
+✅ Automated access rules (new feature)
+
+### What's Manual:
+⚠️ Access request approval (unless AutoAccessManager is used)
+⚠️ Quality verification (requires designated verifiers)
+⚠️ Institution verification (requires admin)
+⚠️ Dataset curation (requires curators)
+
+### What's Automated:
+✅ Payment processing and license issuance
+✅ Access granting after purchase
+✅ Quality level calculation from metrics
+✅ Event emission for frontend updates
+✅ Provenance tracking for all activities
+✅ Rule-based access granting (with AutoAccessManager)
+
+---
+
+## EXAMPLE END-TO-END SCENARIO
+
+### Academic Researcher Workflow:
+```
+1. Researcher discovers "Financial Sentiment Dataset" 
+2. Requests academic access with research purpose
+3. Dataset owner (or auto-rules) grants 1-year access
+4. Researcher downloads data via Filecoin CID
+5. Trains sentiment analysis model on Hugging Face
+6. Records training results back to Synthik
+7. Publishes research paper citing dataset
+8. Other researchers discover model through provenance links
+```
+
+### Commercial User Workflow:
+```
+1. Company searches for fraud detection datasets
+2. Finds suitable dataset with commercial license
+3. Purchases dataset for $500 (fixed price)
+4. Immediately gains access to full dataset
+5. Trains proprietary fraud detection model
+6. Pays ongoing royalties for production usage
+7. Model generates business value
+8. Usage tracked in provenance system
+```
+
+### Dataset Creator Workflow:
+```
+1. AI researcher generates synthetic medical data
+2. Sets up automated access for verified academics
+3. Lists dataset for commercial sale at $1000
+4. Receives academic access requests automatically
+5. Earns revenue from commercial purchases
+6. Tracks how dataset is being used across ecosystem
+7. Updates dataset based on usage feedback
+8. Builds reputation as quality data provider
+```
+
+---
+
+## FUTURE ENHANCEMENTS
+
+### Planned Features:
+- Cross-chain compatibility
+- Advanced analytics dashboard
+- Reputation-based pricing
+- Dataset versioning system
+- Collaborative dataset creation
+- Advanced search with AI recommendations
+- Integration with more ML platforms
+- Mobile application support
+
+This documentation represents the current state of the Synthik platform with all implemented smart contracts and user flows. 

@@ -13,7 +13,7 @@ import {
   List,
   ChevronDown,
 } from 'lucide-react';
-import DatasetCard from '../components/DatasetCard';
+import DatasetCard from '@/components/DatasetCard';
 import Layout from '../components/Layout';
 
 export default function Datasets() {

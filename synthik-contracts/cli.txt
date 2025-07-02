@@ -1,0 +1,11 @@
+
+
+
+npx hardhat run scripts/provenance/showMerkleRecords.ts --network filecoin-calibration
+npx hardhat run scripts/provenance/showModelTrainingPipeline.ts --network filecoin-calibration
+
+
+Deployed Addresses
+
+
+DataProvenanceManager: 0x172717c3f37684Aabf4F9a07dB45c98251dcCb52

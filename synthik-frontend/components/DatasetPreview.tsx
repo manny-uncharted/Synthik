@@ -113,7 +113,7 @@ export default function DatasetPreview({
             No Preview Available
           </h3>
           <p className="text-sm text-gray-600">
-            Configure your dataset and click "Generate Preview" to see sample
+            Configure your dataset and click &quot;Generate Preview&quot; to see sample
             data
           </p>
         </div>

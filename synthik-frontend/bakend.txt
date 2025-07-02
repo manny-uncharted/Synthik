@@ -1,0 +1,696 @@
+# Synthik Backend API Schema Documentation
+
+## Base URL
+```
+Production: https://api.synthik.ai/v1
+Development: http://localhost:3001/v1
+```
+
+## Authentication
+- Bearer token authentication required for protected endpoints
+- JWT tokens with user wallet address and permissions
+
+## Data Models
+
+### User
+```json
+{
+  "id": "string",
+  "walletAddress": "string",
+  "username": "string",
+  "email": "string",
+  "avatar": "string",
+  "createdAt": "datetime",
+  "updatedAt": "datetime",
+  "reputation": "number",
+  "totalDatasets": "number",
+  "totalModels": "number"
+}
+```
+
+### Dataset
+```json
+{
+  "id": "string",
+  "name": "string",
+  "description": "string",
+  "category": "string",
+  "tags": ["string"],
+  "creator": {
+    "id": "string",
+    "username": "string",
+    "walletAddress": "string"
+  },
+  "size": "string",
+  "rows": "number",
+  "tokens": "number",
+  "format": "json|csv|parquet",
+  "schema": [
+    {
+      "id": "string",
+      "name": "string",
+      "type": "string",
+      "description": "string",
+      "constraints": {
+        "required": "boolean",
+        "unique": "boolean",
+        "min": "number",
+        "max": "number",
+        "pattern": "string",
+        "enum": ["string"]
+      }
+    }
+  ],
+  "isVerified": "boolean",
+  "isLocked": "boolean",
+  "price": "number",
+  "pricePerRow": "number",
+  "currency": "ETH|USD",
+  "license": "string",
+  "visibility": "public|private|restricted",
+  "downloads": "number",
+  "views": "number",
+  "purchases": "number",
+  "stars": "number",
+  "rating": "number",
+  "previewRows": "number",
+  "previewFilecoinCID": "string",
+  "fullFilecoinCID": "string",
+  "transactionHash": "string",
+  "blockNumber": "number",
+  "generationLineage": {
+    "model": "string",
+    "technique": "string",
+    "seedData": "string",
+    "augmentationSteps": ["string"],
+    "quality": "fast|balanced|high",
+    "verification": "boolean"
+  },
+  "createdAt": "datetime",
+  "updatedAt": "datetime",
+  "lastModified": "datetime",
+  "status": "draft|generating|ready|failed|deprecated"
+}
+```
+
+### Model
+```json
+{
+  "id": "string",
+  "name": "string",
+  "description": "string",
+  "provider": "string",
+  "baseModel": "string",
+  "datasetUsed": "string",
+  "datasetRows": "number",
+  "trainedBy": {
+    "id": "string",
+    "username": "string",
+    "walletAddress": "string"
+  },
+  "trainedDate": "datetime",
+  "accuracy": "number",
+  "downloads": "number",
+  "stars": "number",
+  "tags": ["string"],
+  "filecoinCID": "string",
+  "status": "training|ready|failed|deprecated",
+  "metrics": {
+    "f1Score": "number",
+    "precision": "number",
+    "recall": "number",
+    "additionalMetrics": "object"
+  },
+  "trainingConfig": {
+    "epochs": "number",
+    "batchSize": "number",
+    "learningRate": "number",
+    "hyperparameters": "object"
+  },
+  "createdAt": "datetime",
+  "updatedAt": "datetime"
+}
+```
+
+### Generation Job
+```json
+{
+  "id": "string",
+  "datasetId": "string",
+  "userId": "string",
+  "status": "queued|running|completed|failed",
+  "progress": "number", // 0-100
+  "config": {
+    "name": "string",
+    "description": "string",
+    "rows": "number",
+    "schema": "SchemaField[]",
+    "format": "json|csv|parquet",
+    "quality": "fast|balanced|high",
+    "verification": "boolean",
+    "augmentation": {
+      "enabled": "boolean",
+      "variations": "number",
+      "noise": "number"
+    },
+    "model": "string",
+    "datasetType": "string"
+  },
+  "result": {
+    "generatedRows": "number",
+    "filecoinCID": "string",
+    "previewCID": "string",
+    "generationTime": "number",
+    "cost": "number"
+  },
+  "error": "string",
+  "createdAt": "datetime",
+  "updatedAt": "datetime",
+  "completedAt": "datetime"
+}
+```
+
+## API Endpoints
+
+### Authentication Endpoints
+
+#### POST /auth/login
+**Description:** Authenticate user with wallet signature
+```json
+Request:
+{
+  "walletAddress": "string",
+  "signature": "string",
+  "message": "string"
+}
+
+Response:
+{
+  "token": "string",
+  "user": "User",
+  "expiresAt": "datetime"
+}
+```
+
+#### POST /auth/refresh
+**Description:** Refresh authentication token
+```json
+Request:
+{
+  "refreshToken": "string"
+}
+
+Response:
+{
+  "token": "string",
+  "expiresAt": "datetime"
+}
+```
+
+### Dataset Endpoints
+
+#### GET /datasets
+**Description:** List and search datasets with filtering
+```json
+Query Parameters:
+- search: "string" (optional)
+- category: "string" (optional)
+- tags: "string[]" (optional)
+- sortBy: "trending|recent|downloads|rating" (default: "trending")
+- visibility: "public|private|all" (default: "public")
+- page: "number" (default: 1)
+- limit: "number" (default: 20, max: 100)
+- minRating: "number" (optional)
+- maxPrice: "number" (optional)
+- verified: "boolean" (optional)
+
+Response:
+{
+  "datasets": "Dataset[]",
+  "pagination": {
+    "page": "number",
+    "limit": "number",
+    "total": "number",
+    "totalPages": "number"
+  },
+  "filters": {
+    "categories": ["string"],
+    "tags": ["string"],
+    "priceRange": {
+      "min": "number",
+      "max": "number"
+    }
+  }
+}
+```
+
+#### GET /datasets/:id
+**Description:** Get detailed dataset information
+```json
+Response:
+{
+  "dataset": "Dataset",
+  "preview": [
+    {
+      "field1": "value1",
+      "field2": "value2"
+    }
+  ],
+  "useCases": [
+    {
+      "title": "string",
+      "description": "string",
+      "icon": "string"
+    }
+  ],
+  "relatedDatasets": "Dataset[]",
+  "userAccess": {
+    "canView": "boolean",
+    "canDownload": "boolean",
+    "hasPurchased": "boolean"
+  }
+}
+```
+
+#### POST /datasets
+**Description:** Create new dataset
+```json
+Request:
+{
+  "name": "string",
+  "description": "string",
+  "category": "string",
+  "tags": ["string"],
+  "schema": "SchemaField[]",
+  "visibility": "public|private|restricted",
+  "license": "string",
+  "price": "number",
+  "pricePerRow": "number",
+  "datasetType": "custom|template|upload",
+  "templateId": "string", // if using template
+  "config": {
+    "rows": "number",
+    "format": "json|csv|parquet",
+    "quality": "fast|balanced|high",
+    "verification": "boolean",
+    "augmentation": "object",
+    "model": "string"
+  }
+}
+
+Response:
+{
+  "dataset": "Dataset",
+  "generationJob": "GenerationJob"
+}
+```
+
+#### PUT /datasets/:id
+**Description:** Update dataset metadata
+```json
+Request:
+{
+  "name": "string",
+  "description": "string",
+  "category": "string",
+  "tags": ["string"],
+  "visibility": "public|private|restricted",
+  "price": "number"
+}
+
+Response:
+{
+  "dataset": "Dataset"
+}
+```
+
+#### DELETE /datasets/:id
+**Description:** Delete dataset (soft delete)
+```json
+Response:
+{
+  "message": "Dataset deleted successfully"
+}
+```
+
+#### POST /datasets/:id/purchase
+**Description:** Purchase locked dataset
+```json
+Request:
+{
+  "transactionHash": "string",
+  "paymentMethod": "crypto|stripe"
+}
+
+Response:
+{
+  "purchase": {
+    "id": "string",
+    "datasetId": "string",
+    "userId": "string",
+    "amount": "number",
+    "currency": "string",
+    "transactionHash": "string",
+    "status": "pending|completed|failed",
+    "createdAt": "datetime"
+  },
+  "fullAccessCID": "string"
+}
+```
+
+#### POST /datasets/:id/star
+**Description:** Star/unstar dataset
+```json
+Request:
+{
+  "starred": "boolean"
+}
+
+Response:
+{
+  "starred": "boolean",
+  "totalStars": "number"
+}
+```
+
+#### GET /datasets/:id/download
+**Description:** Get download URL for dataset
+```json
+Query Parameters:
+- format: "json|csv|parquet" (optional)
+
+Response:
+{
+  "downloadUrl": "string",
+  "expiresAt": "datetime",
+  "format": "string",
+  "size": "string"
+}
+```
+
+### Generation Endpoints
+
+#### POST /generation/preview
+**Description:** Generate preview of dataset
+```json
+Request:
+{
+  "config": {
+    "schema": "SchemaField[]",
+    "rows": "number", // max 50 for preview
+    "model": "string",
+    "quality": "fast|balanced|high"
+  }
+}
+
+Response:
+{
+  "preview": [
+    {
+      "field1": "value1",
+      "field2": "value2"
+    }
+  ],
+  "generationTime": "number",
+  "estimatedCost": "number"
+}
+```
+
+#### GET /generation/jobs/:id
+**Description:** Get generation job status
+```json
+Response:
+{
+  "job": "GenerationJob"
+}
+```
+
+#### GET /generation/templates
+**Description:** Get available dataset templates
+```json
+Response:
+{
+  "templates": [
+    {
+      "id": "string",
+      "name": "string",
+      "description": "string",
+      "category": "string",
+      "schema": "SchemaField[]",
+      "previewData": "object[]",
+      "useCases": ["string"],
+      "estimatedRows": "number"
+    }
+  ]
+}
+```
+
+### Model Endpoints
+
+#### GET /models
+**Description:** List and search models
+```json
+Query Parameters:
+- search: "string" (optional)
+- provider: "string" (optional)
+- tags: "string[]" (optional)
+- sortBy: "popular|recent|accuracy|downloads" (default: "popular")
+- page: "number" (default: 1)
+- limit: "number" (default: 20)
+- minAccuracy: "number" (optional)
+- status: "training|ready|failed|deprecated" (optional)
+
+Response:
+{
+  "models": "Model[]",
+  "pagination": {
+    "page": "number",
+    "limit": "number",
+    "total": "number",
+    "totalPages": "number"
+  }
+}
+```
+
+#### GET /models/:id
+**Description:** Get detailed model information
+```json
+Response:
+{
+  "model": "Model",
+  "trainingDataset": "Dataset",
+  "relatedModels": "Model[]",
+  "downloadStats": {
+    "totalDownloads": "number",
+    "recentDownloads": "number",
+    "downloadHistory": [
+      {
+        "date": "date",
+        "downloads": "number"
+      }
+    ]
+  }
+}
+```
+
+#### POST /models
+**Description:** Train new model
+```json
+Request:
+{
+  "name": "string",
+  "description": "string",
+  "datasetId": "string",
+  "baseModel": "string",
+  "trainingConfig": {
+    "epochs": "number",
+    "batchSize": "number",
+    "learningRate": "number",
+    "hyperparameters": "object"
+  },
+  "tags": ["string"]
+}
+
+Response:
+{
+  "model": "Model",
+  "trainingJob": {
+    "id": "string",
+    "status": "queued",
+    "estimatedTime": "number"
+  }
+}
+```
+
+### User Endpoints
+
+#### GET /users/profile
+**Description:** Get current user profile
+```json
+Response:
+{
+  "user": "User",
+  "stats": {
+    "totalDatasets": "number",
+    "totalModels": "number",
+    "totalDownloads": "number",
+    "reputation": "number"
+  }
+}
+```
+
+#### PUT /users/profile
+**Description:** Update user profile
+```json
+Request:
+{
+  "username": "string",
+  "email": "string",
+  "avatar": "string"
+}
+
+Response:
+{
+  "user": "User"
+}
+```
+
+#### GET /users/datasets
+**Description:** Get user's datasets
+```json
+Query Parameters:
+- status: "draft|generating|ready|failed" (optional)
+- page: "number" (default: 1)
+- limit: "number" (default: 20)
+
+Response:
+{
+  "datasets": "Dataset[]",
+  "pagination": "object"
+}
+```
+
+#### GET /users/models
+**Description:** Get user's trained models
+```json
+Response:
+{
+  "models": "Model[]",
+  "pagination": "object"
+}
+```
+
+#### GET /users/purchases
+**Description:** Get user's dataset purchases
+```json
+Response:
+{
+  "purchases": [
+    {
+      "id": "string",
+      "dataset": "Dataset",
+      "amount": "number",
+      "currency": "string",
+      "purchasedAt": "datetime",
+      "transactionHash": "string"
+    }
+  ]
+}
+```
+
+### Analytics Endpoints
+
+#### GET /analytics/datasets/:id
+**Description:** Get dataset analytics (owner only)
+```json
+Response:
+{
+  "views": {
+    "total": "number",
+    "daily": [{"date": "date", "views": "number"}]
+  },
+  "downloads": {
+    "total": "number",
+    "daily": [{"date": "date", "downloads": "number"}]
+  },
+  "revenue": {
+    "total": "number",
+    "monthly": [{"month": "string", "revenue": "number"}]
+  },
+  "demographics": {
+    "topCountries": [{"country": "string", "count": "number"}],
+    "useCases": [{"category": "string", "count": "number"}]
+  }
+}
+```
+
+### File Storage Endpoints
+
+#### POST /storage/upload
+**Description:** Upload file for dataset creation
+```json
+Request: multipart/form-data
+- file: File
+- type: "dataset|schema|template"
+
+Response:
+{
+  "fileId": "string",
+  "filename": "string",
+  "size": "number",
+  "contentType": "string",
+  "uploadedAt": "datetime"
+}
+```
+
+## Error Response Format
+```json
+{
+  "error": {
+    "code": "string",
+    "message": "string",
+    "details": "object", // optional
+    "timestamp": "datetime"
+  }
+}
+```
+
+## Common Error Codes
+- `UNAUTHORIZED`: Authentication required
+- `FORBIDDEN`: Insufficient permissions
+- `NOT_FOUND`: Resource not found
+- `VALIDATION_ERROR`: Request validation failed
+- `RATE_LIMITED`: Too many requests
+- `PAYMENT_REQUIRED`: Payment required to access resource
+- `GENERATION_FAILED`: Dataset generation failed
+- `TRAINING_FAILED`: Model training failed
+- `INSUFFICIENT_BALANCE`: Not enough funds
+- `INVALID_SIGNATURE`: Invalid wallet signature
+
+## Rate Limiting
+- Authentication: 10 requests per minute
+- Dataset operations: 100 requests per hour
+- Generation: 5 concurrent jobs per user
+- File uploads: 10 uploads per hour
+
+## Webhooks
+```json
+POST /webhooks (configured by user)
+{
+  "event": "dataset.generated|model.trained|payment.completed",
+  "data": "object",
+  "timestamp": "datetime",
+  "signature": "string" // HMAC signature for verification
+}
+```
+
+## WebSocket Events (Real-time updates)
+```
+Connection: wss://api.synthik.ai/ws?token=<jwt_token>
+
+Events:
+- generation.progress: {jobId, progress, status}
+- training.progress: {modelId, progress, status, metrics}
+- dataset.purchased: {datasetId, purchaserId}
+- model.downloaded: {modelId, downloaderId}
+```
