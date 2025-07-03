@@ -1,10 +1,11 @@
 import uuid
 import logging
+from datetime import datetime
 from typing import Optional
-from sqlalchemy import Column, String, Text, DateTime, JSON as SQLJSON, func as sql_func, ForeignKey, Index, Enum as SQLEnum
+from sqlalchemy import Column, String, Text, DateTime, JSON as SQLJSON, func as sql_func, ForeignKey, Index, Enum as SQLEnum, Float, Integer
 from sqlalchemy.ext.hybrid import hybrid_property
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import relationship
-from sqlalchemy.dialects.postgresql import JSONB
 
 from app.core.database import Base
 from app.core.enums.ai_training import StorageType, TrainingPlatform, JobStatus, ModelStorageType
@@ -13,23 +14,6 @@ from app.ai_training.utils.security import fernet_cipher
 logger = logging.getLogger("AItrainingModelDefinitions")
 
 
-class ProcessedDataset(Base):
-    __tablename__ = "processed_datasets"
-    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    name = Column(String, index=True, nullable=False)
-    description = Column(Text, nullable=True)
-    campaign_id = Column(String, ForeignKey("campaigns.id"), nullable=True)
-    onchain_campaign_id = Column(String, nullable=True)
-    version = Column(String, default="1.0", nullable=False)
-    storage_type = Column(SQLEnum(StorageType), nullable=False)
-    storage_url = Column(String, nullable=False)
-    metadata_ = Column("metadata", JSONB, nullable=True)
-    creator_wallet_address = Column(String, index=True, nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=sql_func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=sql_func.now(), server_default=sql_func.now())
-    training_jobs = relationship("AITrainingJob", back_populates="processed_dataset")
-
-    campaign = relationship("Campaign", back_populates="processed_datasets")
 
 
 
@@ -89,3 +73,33 @@ class AITrainingJob(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=sql_func.now(), server_default=sql_func.now())
     started_at = Column(DateTime(timezone=True), nullable=True)
     completed_at = Column(DateTime(timezone=True), nullable=True)
+
+
+
+class Model(Base):
+    __tablename__ = "models"
+
+    id: str = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    name: str = Column(String(255), nullable=False)
+    description: str = Column(Text, nullable=True)
+    provider: str = Column(String(100), nullable=False)
+    base_model: str = Column(String(100), nullable=False)
+    dataset_used: str = Column(String, nullable=False)
+    dataset_rows: int = Column(Integer, default=0)
+    trained_by_id: str = Column(String, nullable=False)
+    trained_date: datetime = Column(DateTime, nullable=True)
+    accuracy: float = Column(Float, default=0.0)
+    downloads: int = Column(Integer, default=0)
+    stars: int = Column(Integer, default=0)
+    tags = Column(ARRAY(String), default=[])
+    filecoin_cid: str = Column(String, nullable=True)
+    status: str = Column(
+        Enum("training", "ready", "failed", "deprecated", name="model_status"),
+        default="training",
+    )
+    metrics = Column(JSONB, default={})
+    training_config = Column(JSONB, default={})
+    created_at: datetime = Column(DateTime, default=datetime.utcnow)
+    updated_at: datetime = Column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )

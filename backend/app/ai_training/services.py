@@ -8,7 +8,7 @@ import tempfile
 import shutil
 from pathlib import Path
 from datetime import datetime, timezone
-from typing import Callable, Optional
+from typing import Callable, Optional, Tuple, List
 from sqlalchemy import select
 
 from sqlalchemy.orm import Session, selectinload
@@ -33,11 +33,56 @@ from app.ai_training.runners.local_script_runner import execute_local_training_s
 from app.ai_training.runners.sagemaker_runner import submit_sagemaker_training_job
 from app.ai_training.runners.vertex_ai_runner import submit_vertex_ai_training_job
 from app.ai_training.runners.huggingface_runner import submit_huggingface_training_job
-from app.ai_training.models import AITrainingJob, ProcessedDataset
+from app.ai_training.models import AITrainingJob, Model
+from app.ai_training.schemas import ModelCreate
+from app.core.exceptions import NotFoundError
+from app.core.logger import logger
 
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(name)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+
+def create_model(
+    db: Session, data: ModelCreate, user_id: str
+) -> Model:
+    """
+    Create a new Model record (status=training) and return it.
+    """
+    m = Model(
+        name=data.name,
+        description=data.description,
+        provider=data.provider,
+        base_model=data.base_model,
+        dataset_used=data.dataset_id,
+        training_config=data.training_config,
+        tags=data.tags,
+        trained_by_id=user_id,
+    )
+    db.add(m)
+    db.commit()
+    db.refresh(m)
+    logger.info("model.created", model_id=m.id, by=user_id)
+    return m
+
+def get_model(db: Session, model_id: str) -> Model:
+    m = db.query(Model).filter(Model.id == model_id).first()
+    if not m:
+        raise NotFoundError(f"Model {model_id} not found")
+    return m
+
+def list_models(
+    db: Session,
+    page: int = 1,
+    limit: int = 20,
+    search: str = None,
+) -> Tuple[List[Model], int]:
+    query = db.query(Model)
+    if search:
+        query = query.filter(Model.name.ilike(f"%{search}%"))
+    total = query.count()
+    items = query.offset((page - 1) * limit).limit(limit).all()
+    return items, total
 
 async def submit_training_job_to_platform(job_id: str, db_provider: Callable[[], Session]):
     """

@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "datahive-backend"
+name = "synthik-backend"
 version = "0.1.0"
 description = ""
 authors = ["mannyuncharted <omoebun52@gmail.com>"]
@@ -48,6 +48,7 @@ multiformats = "^0.3.1.post4"
 ipld-dag-pb = "^0.0.1"
 ipld-car = "^0.0.1"
 ipfshttpclient = "^0.7.0"
+structlog = "^25.4.0"
 
 
 [build-system]

@@ -1,36 +1,13 @@
 from datetime import datetime
 from typing import Dict, Any, Optional, List
-from pydantic import BaseModel, Field as PydanticField, validator, SecretStr, ConfigDict, field_validator
+from pydantic import BaseModel, Field as PydanticField, validator, SecretStr, ConfigDict, field_validator, conint, constr
 from enum import Enum
 
 # Assuming these enums are correctly defined in app.core.enums.ai_training
 from app.core.enums.ai_training import StorageType, TrainingPlatform, JobStatus, ModelStorageType
 
 
-class ProcessedDatasetBase(BaseModel):
-    creator_wallet_address: Optional[str] = PydanticField(None, max_length=128, description="Wallet address of the dataset creator.")
-    onchain_campaign_id: Optional[str] = PydanticField(None, max_length=128, description="Onchain campaign ID associated with the dataset.")
 
-    # Pydantic v2 style for ORM mode (formerly orm_mode = True)
-    model_config = ConfigDict(from_attributes=True, populate_by_name=True) # populate_by_name allows alias usage
-
-
-class ProcessedDatasetCreate(ProcessedDatasetBase):
-    pass
-
-
-class ProcessedDatasetResponse(ProcessedDatasetBase):
-    id: str = PydanticField(..., description="Unique identifier for the processed dataset.")
-    name: str = PydanticField(..., min_length=3, max_length=255, description="Name of the processed dataset.")
-    description: Optional[str] = PydanticField(None, max_length=2048, description="Detailed description of the dataset.")
-    version: Optional[str] = PydanticField("1.0", max_length=50, description="Version of the dataset.")
-    storage_url: Optional[str] = PydanticField(None, max_length=2048, description="URL pointing to the dataset in the specified storage.")
-    campaign_id: Optional[str] = PydanticField(None, max_length=128, description="ID of the campaign associated with the dataset.")
-    storage_type: StorageType = PydanticField(..., description="The type of storage where the dataset is located.")
-    metadata: Optional[Dict[str, Any]] = PydanticField(default_factory=dict, alias="metadata_", description="Arbitrary metadata about the dataset.") # Alias for DB field 'metadata_'
-    created_at: datetime = PydanticField(..., description="Timestamp of dataset creation.")
-    updated_at: datetime = PydanticField(..., description="Timestamp of last dataset update.")
-    # No model_config here as it's inherited from ProcessedDatasetBase
 
 
 class UserExternalServiceCredentialBase(BaseModel):
@@ -138,3 +115,52 @@ class AITrainingJobUpdateInternal(BaseModel):
     error_message: Optional[str] = None
     started_at: Optional[datetime] = None # Allow setting these manually if needed
     completed_at: Optional[datetime] = None
+
+
+class ModelBase(BaseModel):
+    name: constr(min_length=1, max_length=255)
+    description: Optional[str]
+    provider: constr(min_length=1)
+    base_model: constr(min_length=1)
+    dataset_id: constr(min_length=1)
+    training_config: Dict[str, Any]
+    tags: Optional[List[str]] = []
+
+class ModelCreate(ModelBase):
+    pass
+
+class TrainingJobInfo(BaseModel):
+    id: str
+    status: str
+    estimatedTime: float
+
+class ModelResponse(BaseModel):
+    id: str
+    name: str
+    description: Optional[str]
+    provider: str
+    base_model: str
+    dataset_used: str
+    dataset_rows: int
+    trained_by_id: str
+    trained_date: Optional[datetime]
+    accuracy: float
+    downloads: int
+    stars: int
+    tags: List[str]
+    filecoin_cid: Optional[str]
+    status: str
+    metrics: Dict[str, Any]
+    training_config: Dict[str, Any]
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        orm_mode = True
+
+class ModelListResponse(BaseModel):
+    models: List[ModelResponse]
+    page: int
+    limit: int
+    total: int
+    totalPages: int

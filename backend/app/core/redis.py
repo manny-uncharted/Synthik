@@ -1,9 +1,9 @@
 from contextlib import asynccontextmanager
 
-# import aioredis
+import aioredis
 from redis.asyncio import Redis as AsyncRedis
-# from aioredis import Redis as AsyncRedis
-from typing import Optional
+import json
+from typing import Optional, Any
 
 from app.core.constants import REDIS_URL
 
@@ -43,3 +43,15 @@ async def get_redis_session(redis_pool: AsyncRedis):
     finally:
         # Release the connection back to the pool
         redis_pool.release(redis)
+
+
+class RedisCache:
+    def __init__(self, url: str = REDIS_URL):
+        self.redis = aioredis.from_url(url, encoding="utf8", decode_responses=True)
+
+    async def get(self, key: str) -> Optional[Any]:
+        data = await self.redis.get(key)
+        return json.loads(data) if data else None
+
+    async def set(self, key: str, value: Any, expire: int = 300) -> None:
+        await self.redis.set(key, json.dumps(value), ex=expire)

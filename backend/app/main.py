@@ -3,9 +3,11 @@ from fastapi.responses import RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from scalar_fastapi import get_scalar_api_reference
 
-from app.campaigns.routes import router as campaigns_router
+
 from app.ai_verification.routes import router as ai_verification_router
-from app.auth.routes import router as auth_router
+from app.dataset.routes import router as dataset_router
+from app.generation.routes import router as generation_router
+from app.ai_training.routes import ml_ops_router as ai_training_router
 
 
 
@@ -45,9 +47,10 @@ def read_root():
     return {"Hello": "Service is live"}
 
 
-app.include_router(campaigns_router, prefix="/campaigns")
 app.include_router(ai_verification_router, prefix="/ai-verification")
-app.include_router(auth_router)
+app.include_router(dataset_router)
+app.include_router(generation_router)
+app.include_router(ai_training_router)
 
 if __name__ == "__main__":
     import uvicorn
