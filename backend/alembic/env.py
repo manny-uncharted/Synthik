@@ -9,8 +9,9 @@ from sqlalchemy.orm import configure_mappers
 
 sys.path.append(os.path.realpath(os.path.dirname(__file__) + "/../../app"))
 from app.core.database import SQLALCHEMY_DATABASE_URL, Base
-from app.campaigns.models import *
-
+from app.dataset.models import *
+from app.generation.models import *
+from app.ai_training.models import *
 
 
 configure_mappers()
