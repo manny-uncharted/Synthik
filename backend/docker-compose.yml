@@ -25,11 +25,11 @@ services:
   inngest:
     image: inngest/inngest:latest
     command: >
-      inngest
+      inngest dev
       -u http://web:8000/api/inngest
-      --no-discovery
     ports:
       - "8288:8288"
+      - "4317:4317"
     depends_on:
       - web
 
