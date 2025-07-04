@@ -11,16 +11,16 @@ services:
     env_file:
       - .env
 
-  akave:
-    image: akave/akavelink:latest
-    ports:
-      - "8001:3000"
-    env_file:
-      - .env
-    environment:
-      # This variable is specific to the Akave service and can be kept here
-      # or moved to your .env file.
-      NODE_ADDRESS: "connect.akave.ai:5500"
+  # akave:
+  #   image: akave/akavelink:latest
+  #   ports:
+  #     - "8001:3000"
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     # This variable is specific to the Akave service and can be kept here
+  #     # or moved to your .env file.
+  #     NODE_ADDRESS: "connect.akave.ai:5500"
 
   inngest:
     image: inngest/inngest:latest
