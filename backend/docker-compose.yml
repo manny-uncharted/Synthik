@@ -53,7 +53,7 @@ services:
   inngest:
     image: inngest/inngest:latest
     command: >
-      dev
+      inngest
       -u http://web:8000/api/inngest
       --no-discovery
     ports:
