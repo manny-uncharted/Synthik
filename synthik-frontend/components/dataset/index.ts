@@ -5,3 +5,5 @@ export { default as DatasetParameters } from './DatasetParameters';
 export { default as DatasetTypeSelector } from './DatasetTypeSelector';
 export { default as CreateDatasetCard } from './CreateDatasetCard';
 export { default as CreateDatasetFlow } from './CreateDatasetFlow';
+export { default as TransformationBuilder } from './TransformationBuilder';
+export { default as AnonymizationOptions } from './AnonymizationOptions';
