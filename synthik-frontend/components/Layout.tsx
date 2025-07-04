@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { Plus, Wallet, LogOut, User } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import WalletModal from './WalletModal';
 
 interface LayoutProps {
   children: ReactNode;
@@ -11,6 +12,7 @@ interface LayoutProps {
 export default function Layout({ children }: LayoutProps) {
   const [scrolled, setScrolled] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showWalletModal, setShowWalletModal] = useState(false);
   const router = useRouter();
   const {
     login,
@@ -116,6 +118,19 @@ export default function Layout({ children }: LayoutProps) {
                             </div>
                           )}
                         </div>
+                        {/* Show 'Wallet' only for embedded wallets (no external injected wallet) */}
+                        {/* {!hasWallet() && ( */}
+                        <button
+                          onClick={() => {
+                            setShowWalletModal(true);
+                            setShowUserMenu(false);
+                          }}
+                          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                        >
+                          <Wallet className="w-4 h-4" />
+                          Wallet
+                        </button>
+                        {/* )} */}
                         <button
                           onClick={handleSignOut}
                           className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
@@ -172,6 +187,11 @@ export default function Layout({ children }: LayoutProps) {
 
       {/* Main Content */}
       <main>{children}</main>
+
+      {/* Wallet Modal */}
+      {showWalletModal && (
+        <WalletModal onClose={() => setShowWalletModal(false)} />
+      )}
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   Search,
@@ -21,6 +21,11 @@ export default function Datasets() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [sortBy, setSortBy] = useState('trending');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+
+  // Log origin for debugging Privy authorization
+  useEffect(() => {
+    console.log('Origin:', window.location.origin);
+  }, []);
 
   // Mock data - replace with real data from API
   const datasets = [
