@@ -47,12 +47,10 @@ def _extract_preview(file_path: str, max_rows: int = 5) -> List[Dict[str, Any]]:
         pass
     return preview
 
-
-
 @router.post(
     "",
     status_code=status.HTTP_201_CREATED,
-    response_model=Dict[str, Any],  # {"dataset": DatasetResponse, "preview": [...], "generationJob": {...}}
+    response_model=Dict[str, Any],
 )
 async def create_dataset_endpoint(
     creator_id: str = Form(...),
@@ -71,31 +69,67 @@ async def create_dataset_endpoint(
     upload_file: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
 ):
-    # parse tags
     tags_list = [t.strip() for t in tags.split(",") if t.strip()]
 
     preview: List[Dict[str, Any]] = []
     generated_file_path: Optional[str] = None
     file_format: Optional[str] = None
+    storage_details: Optional[Dict[str, Any]] = None
 
     if dataset_type == "upload":
         if not upload_file:
             raise HTTPException(400, "upload_file is required when dataset_type='upload'")
-        # save upload
+
         tmp_dir = tempfile.mkdtemp()
         try:
             filename = upload_file.filename or f"{uuid.uuid4().hex}.csv"
-            generated_file_path = os.path.join(tmp_dir, filename)
-            with open(generated_file_path, "wb") as out:
+            local_file_path = os.path.join(tmp_dir, filename)
+
+            # Save the uploaded file to the temporary directory
+            with open(local_file_path, "wb") as out:
                 shutil.copyfileobj(upload_file.file, out)
+
             ext = pathlib.Path(filename).suffix.lower()
-            file_format = ext.lstrip(".")
-            preview = _extract_preview(generated_file_path, max_rows=5)
+            file_format = ext.lstrip(".") if ext else data_type
+            preview = _extract_preview(local_file_path, max_rows=5)
+
+            # --- Akave Upload Logic ---
+            akave_api = AkaveLinkAPI()
+            bucket_name = "user-dataset-uploads"
+
+            def _upload_to_akave():
+                """Blocking function to run in a threadpool."""
+                try:
+                    akave_api.create_bucket(bucket_name)
+                    logger.info(f"Bucket '{bucket_name}' created or already exists.")
+                except AkaveLinkAPIError as e:
+                    logger.warning(f"Could not create bucket (assuming it already exists): {e}")
+                
+                # Upload the file from the temporary path
+                response = akave_api.upload_file(bucket_name, local_file_path)
+                return response
+
+            try:
+                logger.info(f"Uploading '{filename}' to Akave bucket '{bucket_name}'...")
+                storage_details = await run_in_threadpool(_upload_to_akave)
+                logger.info("File successfully uploaded to Akave.", details=storage_details)
+                # The path to the file in Akave's storage
+                generated_file_path = storage_details.get("path")
+            except AkaveLinkAPIError as e:
+                logger.error(f"Failed to upload file to Akave: {e}")
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=f"Failed to store dataset file in Akave: {e}"
+                )
+            # --- End Akave Upload Logic ---
+
         finally:
+            # Clean up the local temporary directory and close the file handle
+            if os.path.exists(tmp_dir):
+                shutil.rmtree(tmp_dir)
             await upload_file.close()
 
     elif dataset_type == "custom":
-        # config must be provided
         if not config:
             raise HTTPException(400, "config JSON is required when dataset_type='custom'")
         try:
@@ -103,45 +137,34 @@ async def create_dataset_endpoint(
         except json.JSONDecodeError:
             raise HTTPException(400, "Invalid JSON in config")
 
-        # use the registry to find & invoke the CSV generator
         registry = ToolRegistry()
-        if data_type == "csv":
-            tool = registry.get_tool("generate_synthetic_csv")
-        elif data_type == "text":
-            tool = registry.get_tool("generate_synthetic_text")
-        elif data_type == "image":
-            tool = registry.get_tool("generate_synthetic_image")
-        else:
-            raise HTTPException(400, f"Unknown data_type '{data_type}'")
+        tool_name_map = {
+            "csv": "generate_synthetic_csv",
+            "text": "generate_synthetic_text",
+            "image": "generate_synthetic_image",
+        }
+        tool = registry.get_tool(tool_name_map.get(data_type))
         if not tool:
             raise HTTPException(500, f"Synthetic {data_type} tool not registered")
 
-        # tool.invoke expects a dict matching CSVSchema:
-        # result_str = tool.invoke({
-        #     "columns": cfg["columns"],
-        #     "rows": cfg["rows"],
-        #     "output_path": cfg.get("output_path", "generated.csv"),
-        #     "image_delay_seconds": cfg.get("image_delay_seconds", 1.0)
-        # })
         result_str = await run_in_threadpool(lambda: tool.invoke({
-            "columns": cfg["columns"],
-            "rows": cfg["rows"],
-            "output_path": cfg.get("output_path", "generated.csv"),
+            "columns": cfg.get("columns", []),
+            "rows": cfg.get("rows", 0),
+            "output_path": cfg.get("output_path", f"generated.{data_type}"),
             "image_delay_seconds": cfg.get("image_delay_seconds", 1.0),
         }))
         result = json.loads(result_str)
-        print("Result: ", result)
-        generated_file_path = result["csv_path"]
+        generated_file_path = result.get("csv_path") or result.get("output_path")
         file_format = data_type
-        preview = _extract_preview(generated_file_path, max_rows=5)
+        if generated_file_path:
+             preview = _extract_preview(generated_file_path, max_rows=5)
 
     elif dataset_type == "template":
-        # template-based datasets could be handled similarly, omitted here
         raise HTTPException(501, "template-based datasets not yet implemented")
     else:
         raise HTTPException(400, f"Unknown dataset_type '{dataset_type}'")
 
-    # build the DatasetCreate payload
+    # Build the DatasetCreate payload, including Akave storage details for uploads
     payload = DatasetCreate(
         name=name,
         description=description,
@@ -153,21 +176,19 @@ async def create_dataset_endpoint(
         pricePerRow=price_per_row,
         datasetType=dataset_type,
         format=file_format,
+        storageDetails=storage_details, # Pass Akave response to the service layer
     )
 
-    # create DB records
+    # Create the dataset record in the database
     ds: Dataset = create_dataset(db, payload, creator_id=creator_id)
     job = create_generation_job(db, ds.id, creator_id, config=payload.dict())
-
-    # You can enqueue a task if you need further processing; else return immediately
-    # from app.datasets.tasks import finalize_dataset_generation
-    # finalize_dataset_generation.delay(job.id)
 
     return {
         "dataset": ds,
         "preview": preview,
         "generationJob": job,
     }
+
 
 @router.get("", response_model=DatasetListResponse)
 async def read_list(
@@ -194,6 +215,7 @@ async def read_list(
     )
     await redis.set(cache_key, resp.model_dump())
     return resp
+
 
 @router.get("/{dataset_id}", response_model=DatasetResponse)
 async def read_one(
