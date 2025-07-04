@@ -11,17 +11,6 @@ services:
     env_file:
       - .env
 
-  # akave:
-  #   image: akave/akavelink:latest
-  #   ports:
-  #     - "8001:3000"
-  #   env_file:
-  #     - .env
-  #   environment:
-  #     # This variable is specific to the Akave service and can be kept here
-  #     # or moved to your .env file.
-  #     NODE_ADDRESS: "connect.akave.ai:5500"
-
   inngest:
     image: inngest/inngest:latest
     command: >
@@ -32,25 +21,3 @@ services:
       - "4317:4317"
     depends_on:
       - web
-
-# The services below are commented out, but if you re-enable them,
-# you can also replace their 'environment' block with 'env_file: - .env'
-
-# redis:
-#   image: redis:alpine
-
-# celery_worker:
-#   build: .
-#   command: celery -A app.celery.celery.celery_app worker --loglevel=info
-#   depends_on:
-#     - redis
-#   env_file:
-#     - .env
-
-# celery_beat:
-#   build: .
-#   command: celery -A app.celery.celery.celery_app beat --loglevel=info
-#   depends_on:
-#     - redis
-#   env_file:
-#     - .env
