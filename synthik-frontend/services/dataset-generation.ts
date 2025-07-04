@@ -999,7 +999,7 @@ Generate the JSON array now:`;
         // It's an object - DO NOT wrap single objects in arrays
         // This is likely an error from the model
         console.error(
-          'OpenAI returned an object instead of array. This is an error. Object:',
+          'Provider returned an object instead of array. This is an error. Object:',
           parsedData
         );
 
@@ -2307,3 +2307,998 @@ Generate exactly ${additionalRows} records that seamlessly blend with the existi
 
 // Export singleton instance
 export const dataAugmentationService = new DataAugmentationService();
+
+// Data Transformation Service
+export interface TransformRule {
+  id: string;
+  type: 'rename' | 'convert' | 'calculate' | 'format' | 'filter' | 'aggregate';
+  sourceField?: string;
+  targetField?: string;
+  parameters?: Record<string, unknown>;
+  enabled: boolean;
+}
+
+export interface TransformationPipeline {
+  rules: TransformRule[];
+  preserveOriginal: boolean;
+}
+
+export class DataTransformationService {
+  // Analyze data to suggest transformations
+  analyzeForTransformations(
+    data: DataRecord[],
+    schema: SchemaField[]
+  ): {
+    suggestions: TransformRule[];
+    dataTypes: Record<string, string>;
+    patterns: Record<string, string>;
+  } {
+    const suggestions: TransformRule[] = [];
+    const dataTypes: Record<string, string> = {};
+    const patterns: Record<string, string> = {};
+
+    // Analyze each field
+    schema.forEach((field) => {
+      const values = data
+        .map((row) => row[field.name])
+        .filter((v) => v !== null && v !== undefined);
+
+      // Detect actual data type vs declared type
+      const detectedType = this.detectDataType(values);
+      dataTypes[field.name] = detectedType;
+
+      // Detect patterns (email, phone, date formats, etc.)
+      const pattern = this.detectPattern(values);
+      if (pattern) {
+        patterns[field.name] = pattern;
+      }
+
+      // Suggest type conversions
+      if (
+        detectedType !== field.type &&
+        this.canConvert(field.type, detectedType)
+      ) {
+        suggestions.push({
+          id: `convert-${field.name}`,
+          type: 'convert',
+          sourceField: field.name,
+          targetField: field.name,
+          parameters: {
+            fromType: field.type,
+            toType: detectedType,
+          },
+          enabled: false,
+        });
+      }
+
+      // Suggest formatting for dates and numbers
+      if (field.type === 'date' || detectedType === 'date') {
+        suggestions.push({
+          id: `format-date-${field.name}`,
+          type: 'format',
+          sourceField: field.name,
+          targetField: field.name,
+          parameters: {
+            format: 'YYYY-MM-DD',
+            timezone: 'UTC',
+          },
+          enabled: false,
+        });
+      }
+
+      // Suggest calculated fields
+      if (field.type === 'number' || detectedType === 'number') {
+        suggestions.push({
+          id: `calculate-${field.name}-normalized`,
+          type: 'calculate',
+          sourceField: field.name,
+          targetField: `${field.name}_normalized`,
+          parameters: {
+            operation: 'normalize',
+            method: 'min-max',
+          },
+          enabled: false,
+        });
+      }
+    });
+
+    // Suggest aggregations if data has groupable fields
+    const categoricalFields = schema.filter((f) =>
+      this.isCategorical(data.map((r) => r[f.name]))
+    );
+
+    if (categoricalFields.length > 0) {
+      suggestions.push({
+        id: 'aggregate-by-category',
+        type: 'aggregate',
+        parameters: {
+          groupBy: categoricalFields[0].name,
+          aggregations: {
+            count: '*',
+            avg: schema.find((f) => f.type === 'number')?.name,
+          },
+        },
+        enabled: false,
+      });
+    }
+
+    return { suggestions, dataTypes, patterns };
+  }
+
+  // Apply transformation pipeline to data
+  async applyTransformations(
+    data: DataRecord[],
+    pipeline: TransformationPipeline,
+    onProgress?: (progress: number, message: string) => void
+  ): Promise<{
+    transformedData: DataRecord[];
+    schema: SchemaField[];
+    report: {
+      appliedRules: number;
+      rowsAffected: number;
+      newFieldsCreated: string[];
+      errors: string[];
+    };
+  }> {
+    let transformedData = [...data];
+    const newFields: string[] = [];
+    const errors: string[] = [];
+    let appliedRules = 0;
+
+    // Apply each rule in sequence
+    for (let i = 0; i < pipeline.rules.length; i++) {
+      const rule = pipeline.rules[i];
+      if (!rule.enabled) continue;
+
+      onProgress?.(
+        (i / pipeline.rules.length) * 100,
+        `Applying ${rule.type} transformation...`
+      );
+
+      try {
+        const result = await this.applyRule(transformedData, rule);
+        transformedData = result.data;
+        if (result.newField) {
+          newFields.push(result.newField);
+        }
+        appliedRules++;
+      } catch (error) {
+        errors.push(
+          `Rule ${rule.id}: ${
+            error instanceof Error ? error.message : String(error)
+          }`
+        );
+      }
+    }
+
+    // Generate new schema
+    const schema = this.generateSchemaFromData(transformedData);
+
+    onProgress?.(100, 'Transformation complete');
+
+    return {
+      transformedData,
+      schema,
+      report: {
+        appliedRules,
+        rowsAffected: transformedData.length,
+        newFieldsCreated: newFields,
+        errors,
+      },
+    };
+  }
+
+  private async applyRule(
+    data: DataRecord[],
+    rule: TransformRule
+  ): Promise<{ data: DataRecord[]; newField?: string }> {
+    switch (rule.type) {
+      case 'rename':
+        return this.applyRename(data, rule);
+      case 'convert':
+        return this.applyConvert(data, rule);
+      case 'calculate':
+        return this.applyCalculate(data, rule);
+      case 'format':
+        return this.applyFormat(data, rule);
+      case 'filter':
+        return this.applyFilter(data, rule);
+      case 'aggregate':
+        return this.applyAggregate(data, rule);
+      default:
+        throw new Error(`Unknown rule type: ${rule.type}`);
+    }
+  }
+
+  private applyRename(
+    data: DataRecord[],
+    rule: TransformRule
+  ): { data: DataRecord[]; newField?: string } {
+    const { sourceField, targetField } = rule;
+    if (!sourceField || !targetField) {
+      throw new Error('Rename rule requires sourceField and targetField');
+    }
+
+    const renamed = data.map((row) => {
+      const newRow = { ...row };
+      if (sourceField in newRow) {
+        newRow[targetField] = newRow[sourceField];
+        if (sourceField !== targetField) {
+          delete newRow[sourceField];
+        }
+      }
+      return newRow;
+    });
+
+    return { data: renamed };
+  }
+
+  private applyConvert(
+    data: DataRecord[],
+    rule: TransformRule
+  ): { data: DataRecord[]; newField?: string } {
+    const { sourceField, targetField, parameters } = rule;
+    const { toType } = parameters as { toType: string };
+
+    const converted = data.map((row) => {
+      const newRow = { ...row };
+      const value = row[sourceField!];
+
+      if (value !== null && value !== undefined) {
+        newRow[targetField || sourceField!] = this.convertValue(value, toType);
+      }
+
+      return newRow;
+    });
+
+    return { data: converted };
+  }
+
+  private applyCalculate(
+    data: DataRecord[],
+    rule: TransformRule
+  ): { data: DataRecord[]; newField?: string } {
+    const { sourceField, targetField, parameters } = rule;
+    const { operation, method } = parameters as {
+      operation: string;
+      method?: string;
+    };
+
+    let calculated = [...data];
+
+    switch (operation) {
+      case 'normalize':
+        const values = data
+          .map((r) => Number(r[sourceField!]))
+          .filter((v) => !isNaN(v));
+        const min = Math.min(...values);
+        const max = Math.max(...values);
+
+        calculated = data.map((row) => {
+          const normalizedValue = this.normalizeValue(
+            Number(row[sourceField!]),
+            min,
+            max,
+            method
+          );
+          const newRow: DataRecord = { ...row };
+          newRow[targetField!] = normalizedValue;
+          return newRow;
+        });
+        break;
+
+      case 'derive':
+        // Add more calculation types as needed
+        break;
+    }
+
+    return { data: calculated, newField: targetField };
+  }
+
+  private applyFormat(
+    data: DataRecord[],
+    _rule: TransformRule
+  ): { data: DataRecord[]; newField?: string } {
+    // Implement formatting logic
+    return { data };
+  }
+
+  private applyFilter(
+    data: DataRecord[],
+    rule: TransformRule
+  ): { data: DataRecord[]; newField?: string } {
+    const { parameters } = rule;
+    const { field, operator, value } = parameters as {
+      field: string;
+      operator: string;
+      value: unknown;
+    };
+
+    const filtered = data.filter((row) => {
+      const fieldValue = row[field];
+      return this.evaluateCondition(fieldValue, operator, value);
+    });
+
+    return { data: filtered };
+  }
+
+  private applyAggregate(
+    data: DataRecord[],
+    rule: TransformRule
+  ): { data: DataRecord[]; newField?: string } {
+    // Implement aggregation logic
+    return { data };
+  }
+
+  private detectDataType(values: unknown[]): string {
+    if (values.length === 0) return 'string';
+
+    const types = values.map((v) => {
+      if (typeof v === 'number') return 'number';
+      if (typeof v === 'boolean') return 'boolean';
+      if (v instanceof Date) return 'date';
+      if (typeof v === 'string') {
+        if (/^\d{4}-\d{2}-\d{2}/.test(v)) return 'date';
+        if (/^\d+$/.test(v)) return 'number';
+        if (v === 'true' || v === 'false') return 'boolean';
+      }
+      return 'string';
+    });
+
+    // Return most common type
+    const typeCounts = types.reduce((acc, type) => {
+      acc[type] = (acc[type] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    return Object.entries(typeCounts).sort((a, b) => b[1] - a[1])[0][0];
+  }
+
+  private detectPattern(values: unknown[]): string | null {
+    const stringValues = values.filter(
+      (v) => typeof v === 'string'
+    ) as string[];
+    if (stringValues.length === 0) return null;
+
+    // Email pattern
+    if (stringValues.some((v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v))) {
+      return 'email';
+    }
+
+    // Phone pattern
+    if (
+      stringValues.some((v) => /^[\d\s\-\(\)\+]+$/.test(v) && v.length >= 10)
+    ) {
+      return 'phone';
+    }
+
+    // URL pattern
+    if (stringValues.some((v) => /^https?:\/\//.test(v))) {
+      return 'url';
+    }
+
+    return null;
+  }
+
+  private canConvert(fromType: string, toType: string): boolean {
+    const conversions: Record<string, string[]> = {
+      string: ['number', 'boolean', 'date'],
+      number: ['string', 'boolean'],
+      boolean: ['string', 'number'],
+      date: ['string'],
+    };
+
+    return conversions[fromType]?.includes(toType) || false;
+  }
+
+  private isCategorical(values: unknown[]): boolean {
+    const uniqueValues = new Set(values);
+    return uniqueValues.size < values.length * 0.1 && uniqueValues.size < 50;
+  }
+
+  private convertValue(value: unknown, toType: string): unknown {
+    switch (toType) {
+      case 'number':
+        return Number(value);
+      case 'string':
+        return String(value);
+      case 'boolean':
+        return Boolean(value);
+      case 'date':
+        return new Date(String(value));
+      default:
+        return value;
+    }
+  }
+
+  private normalizeValue(
+    value: number,
+    min: number,
+    max: number,
+    method = 'min-max'
+  ): number {
+    if (method === 'min-max') {
+      return (value - min) / (max - min);
+    }
+    // Add other normalization methods
+    return value;
+  }
+
+  private evaluateCondition(
+    value: unknown,
+    operator: string,
+    compareValue: unknown
+  ): boolean {
+    switch (operator) {
+      case '=':
+        return value === compareValue;
+      case '!=':
+        return value !== compareValue;
+      case '>':
+        return Number(value) > Number(compareValue);
+      case '<':
+        return Number(value) < Number(compareValue);
+      case '>=':
+        return Number(value) >= Number(compareValue);
+      case '<=':
+        return Number(value) <= Number(compareValue);
+      case 'contains':
+        return String(value).includes(String(compareValue));
+      case 'startsWith':
+        return String(value).startsWith(String(compareValue));
+      case 'endsWith':
+        return String(value).endsWith(String(compareValue));
+      default:
+        return false;
+    }
+  }
+
+  private generateSchemaFromData(data: DataRecord[]): SchemaField[] {
+    if (data.length === 0) return [];
+
+    const schema: SchemaField[] = [];
+    const fieldStats: Record<
+      string,
+      {
+        types: Set<string>;
+        nullCount: number;
+        uniqueValues: Set<any>;
+        samples: any[];
+      }
+    > = {};
+
+    // Analyze all records to understand field characteristics
+    data.forEach((record) => {
+      Object.entries(record).forEach(([fieldName, value]) => {
+        if (!fieldStats[fieldName]) {
+          fieldStats[fieldName] = {
+            types: new Set(),
+            nullCount: 0,
+            uniqueValues: new Set(),
+            samples: [],
+          };
+        }
+
+        const stats = fieldStats[fieldName];
+
+        if (value === null || value === undefined) {
+          stats.nullCount++;
+        } else {
+          stats.types.add(typeof value);
+          stats.uniqueValues.add(value);
+          if (stats.samples.length < 10) {
+            stats.samples.push(value);
+          }
+        }
+      });
+    });
+
+    // Generate schema fields
+    Object.entries(fieldStats).forEach(([fieldName, stats], index) => {
+      const totalRecords = data.length;
+      const isRequired = stats.nullCount < totalRecords * 0.1; // Less than 10% null
+      const isUnique =
+        stats.uniqueValues.size === totalRecords - stats.nullCount;
+
+      // Determine primary type
+      let primaryType = 'string';
+      if (stats.types.has('number')) primaryType = 'number';
+      else if (stats.types.has('boolean')) primaryType = 'boolean';
+      else if (
+        stats.samples.some(
+          (s) =>
+            typeof s === 'string' &&
+            s.match(/\d{4}-\d{2}-\d{2}|\d{2}\/\d{2}\/\d{4}/)
+        )
+      ) {
+        primaryType = 'date';
+      }
+
+      // Generate constraints
+      const constraints: {
+        required?: boolean;
+        unique?: boolean;
+        min?: number;
+        max?: number;
+        enum?: string[];
+      } = { required: isRequired };
+      if (isUnique) constraints.unique = true;
+
+      if (primaryType === 'number') {
+        const numericValues = stats.samples.filter(
+          (s) => typeof s === 'number'
+        ) as number[];
+        if (numericValues.length > 0) {
+          constraints.min = Math.min(...numericValues);
+          constraints.max = Math.max(...numericValues);
+        }
+      }
+
+      // Detect enums (if limited unique values)
+      if (stats.uniqueValues.size <= 10 && stats.uniqueValues.size > 1) {
+        constraints.enum = Array.from(stats.uniqueValues).map((v) => String(v));
+      }
+
+      schema.push({
+        id: String(index + 1),
+        name: fieldName,
+        type: primaryType,
+        description: `${fieldName} field (auto-detected)`,
+        constraints,
+      });
+    });
+
+    return schema;
+  }
+}
+
+// Data Anonymization Service
+export interface AnonymizationRule {
+  field: string;
+  method: 'mask' | 'hash' | 'fake' | 'generalize' | 'remove' | 'shuffle';
+  parameters?: Record<string, unknown>;
+}
+
+export interface PrivacyLevel {
+  level: 'low' | 'medium' | 'high';
+  description: string;
+  defaultRules: AnonymizationRule[];
+}
+
+export class DataAnonymizationService {
+  private readonly PII_PATTERNS = {
+    email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+    phone: /^[\d\s\-\(\)\+]{10,}$/,
+    ssn: /^\d{3}-?\d{2}-?\d{4}$/,
+    creditCard: /^\d{4}[\s\-]?\d{4}[\s\-]?\d{4}[\s\-]?\d{4}$/,
+    ipAddress:
+      /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/,
+  };
+
+  private readonly FIELD_NAME_PATTERNS = {
+    name: /name|first|last|surname|given/i,
+    email: /email|e-mail|mail/i,
+    phone: /phone|mobile|cell|tel/i,
+    address: /address|street|city|state|zip|postal/i,
+    ssn: /ssn|social/i,
+    dob: /birth|born|dob|age/i,
+    id: /\bid\b|identifier|key/i,
+  };
+
+  // Detect PII fields in data
+  detectPII(
+    data: DataRecord[],
+    schema: SchemaField[]
+  ): {
+    detectedFields: Array<{
+      field: string;
+      type: string;
+      confidence: number;
+      samples: unknown[];
+    }>;
+    suggestedRules: AnonymizationRule[];
+  } {
+    const detectedFields: Array<{
+      field: string;
+      type: string;
+      confidence: number;
+      samples: unknown[];
+    }> = [];
+    const suggestedRules: AnonymizationRule[] = [];
+
+    schema.forEach((field) => {
+      const values = data
+        .slice(0, 100) // Sample first 100 rows
+        .map((row) => row[field.name])
+        .filter((v) => v !== null && v !== undefined);
+
+      // Check field name patterns
+      let detectedType: string | null = null;
+      let confidence = 0;
+
+      // Name-based detection
+      for (const [type, pattern] of Object.entries(this.FIELD_NAME_PATTERNS)) {
+        if (pattern.test(field.name)) {
+          detectedType = type;
+          confidence = 0.7;
+          break;
+        }
+      }
+
+      // Content-based detection
+      if (!detectedType && field.type === 'string') {
+        const stringValues = values.filter(
+          (v) => typeof v === 'string'
+        ) as string[];
+
+        for (const [type, pattern] of Object.entries(this.PII_PATTERNS)) {
+          const matches = stringValues.filter((v) => pattern.test(v));
+          if (matches.length > stringValues.length * 0.5) {
+            detectedType = type;
+            confidence = Math.min(0.9, matches.length / stringValues.length);
+            break;
+          }
+        }
+      }
+
+      if (detectedType) {
+        detectedFields.push({
+          field: field.name,
+          type: detectedType,
+          confidence,
+          samples: values.slice(0, 3),
+        });
+
+        // Suggest anonymization rule based on type
+        suggestedRules.push(this.getSuggestedRule(field.name, detectedType));
+      }
+    });
+
+    return { detectedFields, suggestedRules };
+  }
+
+  // Get privacy level presets
+  getPrivacyLevels(): PrivacyLevel[] {
+    return [
+      {
+        level: 'low',
+        description: 'Basic anonymization - suitable for internal use',
+        defaultRules: [
+          { field: '*', method: 'mask', parameters: { partial: true } },
+        ],
+      },
+      {
+        level: 'medium',
+        description:
+          'Standard anonymization - suitable for sharing with partners',
+        defaultRules: [
+          { field: 'email', method: 'fake' },
+          { field: 'name', method: 'fake' },
+          { field: 'phone', method: 'mask' },
+          { field: 'address', method: 'generalize' },
+        ],
+      },
+      {
+        level: 'high',
+        description: 'Maximum anonymization - suitable for public release',
+        defaultRules: [
+          { field: 'email', method: 'hash' },
+          { field: 'name', method: 'remove' },
+          { field: 'phone', method: 'remove' },
+          { field: 'address', method: 'remove' },
+          { field: 'id', method: 'hash' },
+          { field: 'dob', method: 'generalize', parameters: { to: 'year' } },
+        ],
+      },
+    ];
+  }
+
+  // Apply anonymization rules to data
+  async anonymizeData(
+    data: DataRecord[],
+    rules: AnonymizationRule[],
+    options: {
+      seed?: string; // For consistent anonymization
+      preserveFormat?: boolean;
+      onProgress?: (progress: number, message: string) => void;
+    } = {}
+  ): Promise<{
+    anonymizedData: DataRecord[];
+    report: {
+      fieldsAnonymized: string[];
+      recordsProcessed: number;
+      reversible: boolean;
+    };
+  }> {
+    const { seed = 'default', preserveFormat = true, onProgress } = options;
+    let anonymizedData = [...data];
+    const fieldsAnonymized = new Set<string>();
+
+    // Process each rule
+    for (let i = 0; i < rules.length; i++) {
+      const rule = rules[i];
+      onProgress?.(
+        (i / rules.length) * 100,
+        `Anonymizing ${rule.field} using ${rule.method}...`
+      );
+
+      const fields =
+        rule.field === '*' ? Object.keys(data[0] || {}) : [rule.field];
+
+      for (const field of fields) {
+        anonymizedData = this.applyAnonymizationRule(
+          anonymizedData,
+          field,
+          rule.method,
+          rule.parameters,
+          { seed, preserveFormat }
+        );
+        fieldsAnonymized.add(field);
+      }
+    }
+
+    onProgress?.(100, 'Anonymization complete');
+
+    // Determine if anonymization is reversible
+    const reversible = rules.every(
+      (r) => r.method === 'mask' || r.method === 'shuffle'
+    );
+
+    return {
+      anonymizedData,
+      report: {
+        fieldsAnonymized: Array.from(fieldsAnonymized),
+        recordsProcessed: anonymizedData.length,
+        reversible,
+      },
+    };
+  }
+
+  private applyAnonymizationRule(
+    data: DataRecord[],
+    field: string,
+    method: AnonymizationRule['method'],
+    parameters?: Record<string, unknown>,
+    options?: { seed: string; preserveFormat: boolean }
+  ): DataRecord[] {
+    switch (method) {
+      case 'mask':
+        return this.maskField(data, field, parameters);
+      case 'hash':
+        return this.hashField(data, field, options?.seed);
+      case 'fake':
+        return this.fakeField(data, field, options?.seed);
+      case 'generalize':
+        return this.generalizeField(data, field, parameters);
+      case 'remove':
+        return this.removeField(data, field);
+      case 'shuffle':
+        return this.shuffleField(data, field, options?.seed);
+      default:
+        return data;
+    }
+  }
+
+  private maskField(
+    data: DataRecord[],
+    field: string,
+    parameters?: Record<string, unknown>
+  ): DataRecord[] {
+    const partial = parameters?.partial || false;
+
+    return data.map((row) => ({
+      ...row,
+      [field]: this.maskValue(row[field], partial as boolean),
+    }));
+  }
+
+  private maskValue(value: unknown, partial: boolean): unknown {
+    if (typeof value !== 'string') return value;
+
+    if (partial) {
+      // Partial masking - show first and last few characters
+      if (value.length <= 4) return '****';
+      const showChars = Math.min(2, Math.floor(value.length / 4));
+      return (
+        value.substring(0, showChars) +
+        '*'.repeat(value.length - showChars * 2) +
+        value.substring(value.length - showChars)
+      );
+    } else {
+      // Full masking
+      return '*'.repeat(value.length);
+    }
+  }
+
+  private hashField(
+    data: DataRecord[],
+    field: string,
+    seed = 'default'
+  ): DataRecord[] {
+    // Simple hash function for demo - in production use crypto
+    const hash = (str: string): string => {
+      let hash = 0;
+      const combined = str + seed;
+      for (let i = 0; i < combined.length; i++) {
+        const char = combined.charCodeAt(i);
+        hash = (hash << 5) - hash + char;
+        hash = hash & hash;
+      }
+      return Math.abs(hash).toString(16);
+    };
+
+    return data.map((row) => ({
+      ...row,
+      [field]: row[field] ? `HASH_${hash(String(row[field]))}` : row[field],
+    }));
+  }
+
+  private fakeField(
+    data: DataRecord[],
+    field: string,
+    seed = 'default'
+  ): DataRecord[] {
+    const fakeGenerators: Record<string, (index: number) => string> = {
+      name: (i) => `Person_${i + 1}`,
+      email: (i) => `user${i + 1}@anonymous.com`,
+      phone: (i) => `555-000-${String(i + 1).padStart(4, '0')}`,
+      address: (i) => `${i + 1} Anonymous Street, Privacy City`,
+    };
+
+    const fieldType = this.inferFieldType(field);
+    const generator = fakeGenerators[fieldType] || ((i) => `Anon_${i + 1}`);
+
+    // Create consistent mapping
+    const valueMap = new Map<unknown, string>();
+    let counter = 0;
+
+    return data.map((row) => {
+      const originalValue = row[field];
+      if (!originalValue) return row;
+
+      if (!valueMap.has(originalValue)) {
+        valueMap.set(originalValue, generator(counter++));
+      }
+
+      return {
+        ...row,
+        [field]: valueMap.get(originalValue),
+      };
+    });
+  }
+
+  private generalizeField(
+    data: DataRecord[],
+    field: string,
+    parameters?: Record<string, unknown>
+  ): DataRecord[] {
+    return data.map((row) => ({
+      ...row,
+      [field]: this.generalizeValue(row[field], field, parameters),
+    }));
+  }
+
+  private generalizeValue(
+    value: unknown,
+    field: string,
+    parameters?: Record<string, unknown>
+  ): unknown {
+    if (!value) return value;
+
+    // Date generalization
+    if (value instanceof Date || /\d{4}-\d{2}-\d{2}/.test(String(value))) {
+      const date = value instanceof Date ? value : new Date(String(value));
+      const to = parameters?.to || 'month';
+
+      switch (to) {
+        case 'year':
+          return date.getFullYear();
+        case 'month':
+          return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
+            2,
+            '0'
+          )}`;
+        case 'decade':
+          return `${Math.floor(date.getFullYear() / 10) * 10}s`;
+      }
+    }
+
+    // Numeric generalization (ranges)
+    if (typeof value === 'number') {
+      const binSize = Number(parameters?.binSize) || 10;
+      return `${Math.floor(value / binSize) * binSize}-${
+        Math.floor(value / binSize) * binSize + binSize
+      }`;
+    }
+
+    // Address generalization
+    if (field.toLowerCase().includes('address')) {
+      // Extract city/state only
+      const parts = String(value).split(',');
+      return parts.length > 1
+        ? parts[parts.length - 1].trim()
+        : 'Unknown Location';
+    }
+
+    return value;
+  }
+
+  private removeField(data: DataRecord[], field: string): DataRecord[] {
+    return data.map((row) => {
+      const newRow = { ...row };
+      delete newRow[field];
+      return newRow;
+    });
+  }
+
+  private shuffleField(
+    data: DataRecord[],
+    field: string,
+    seed = 'default'
+  ): DataRecord[] {
+    // Collect all values
+    const values = data.map((row) => row[field]);
+
+    // Shuffle using seed for consistency
+    const shuffled = [...values];
+    const random = this.seededRandom(seed);
+
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+
+    // Apply shuffled values
+    return data.map((row, index) => ({
+      ...row,
+      [field]: shuffled[index],
+    }));
+  }
+
+  private getSuggestedRule(
+    field: string,
+    detectedType: string
+  ): AnonymizationRule {
+    const ruleMap: Record<string, AnonymizationRule> = {
+      email: { field, method: 'fake' },
+      phone: { field, method: 'mask', parameters: { partial: true } },
+      ssn: { field, method: 'hash' },
+      creditCard: { field, method: 'mask', parameters: { partial: true } },
+      name: { field, method: 'fake' },
+      address: { field, method: 'generalize' },
+      dob: { field, method: 'generalize', parameters: { to: 'year' } },
+      id: { field, method: 'hash' },
+      ipAddress: { field, method: 'mask', parameters: { partial: true } },
+    };
+
+    return ruleMap[detectedType] || { field, method: 'mask' };
+  }
+
+  private inferFieldType(fieldName: string): string {
+    const normalized = fieldName.toLowerCase();
+
+    for (const [type, pattern] of Object.entries(this.FIELD_NAME_PATTERNS)) {
+      if (pattern.test(normalized)) {
+        return type;
+      }
+    }
+
+    return 'unknown';
+  }
+
+  private seededRandom(seed: string): () => number {
+    let hash = 0;
+    for (let i = 0; i < seed.length; i++) {
+      hash = (hash << 5) - hash + seed.charCodeAt(i);
+      hash = hash & hash;
+    }
+
+    return () => {
+      hash = (hash * 9301 + 49297) % 233280;
+      return hash / 233280;
+    };
+  }
+}
+
+export const dataTransformationService = new DataTransformationService();
+export const dataAnonymizationService = new DataAnonymizationService();

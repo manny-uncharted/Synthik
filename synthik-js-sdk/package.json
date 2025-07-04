@@ -1,0 +1,44 @@
+{
+  "name": "@synthik/sdk",
+  "version": "1.0.0",
+  "description": "Official JavaScript SDK for Synthik - Synthetic Data Platform on Filecoin",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "jest",
+    "lint": "eslint src/**/*.ts",
+    "format": "prettier --write src/**/*.ts",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [ 
+    "synthik",
+    "synthetic-data",
+    "filecoin",
+    "blockchain",
+    "data-provenance",
+    "privacy",
+    "anonymization"
+  ],
+  "author": "Synthik",
+  "license": "MIT",
+  "dependencies": {
+    "ethers": "^6.11.1",
+    "events": "^3.3.0",
+    "axios": "^1.6.7",
+    "p-retry": "^5.1.2",
+    "p-queue": "^7.4.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.19",
+    "@typescript-eslint/eslint-plugin": "^7.0.1",
+    "@typescript-eslint/parser": "^7.0.1",
+    "eslint": "^8.56.0",
+    "jest": "^29.7.0",
+    "prettier": "^3.2.5",
+    "ts-jest": "^29.1.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  }
+}

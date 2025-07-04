@@ -110,7 +110,10 @@ export default function DatasetTypeSelector({
 
   // Analyze uploaded file when it changes
   useEffect(() => {
-    if (uploadedFile && selectedType === 'augmentation') {
+    if (
+      uploadedFile &&
+      (selectedType === 'augmentation' || selectedType === 'transformation')
+    ) {
       analyzeUploadedFile(uploadedFile);
     } else {
       setFileAnalysis(null);
@@ -527,13 +530,118 @@ export default function DatasetTypeSelector({
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-amber-50 border border-amber-200 rounded-lg p-4"
+          className="space-y-3"
         >
-          <p className="text-sm text-amber-800">
-            <strong>Note:</strong> Upload your sensitive dataset to apply
-            privacy-preserving transformations. All processing happens locally
-            before blockchain verification.
-          </p>
+          <h4 className="text-sm font-semibold text-gray-900">
+            Upload Your Dataset
+          </h4>
+          <div
+            className={`relative border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+              dragActive
+                ? 'border-indigo-500 bg-indigo-50'
+                : 'border-gray-300 bg-gray-50 hover:border-gray-400'
+            }`}
+            onDragEnter={handleDrag}
+            onDragLeave={handleDrag}
+            onDragOver={handleDrag}
+            onDrop={handleDrop}
+          >
+            <input
+              type="file"
+              id="transform-file-upload"
+              className="sr-only"
+              accept=".csv,.json,.xlsx"
+              onChange={handleFileChange}
+            />
+
+            {uploadedFile ? (
+              <div className="space-y-2">
+                <Layers className="w-8 h-8 text-indigo-600 mx-auto" />
+                <p className="text-sm font-medium text-gray-900">
+                  {uploadedFile.name}
+                </p>
+                <p className="text-xs text-gray-600">
+                  {(uploadedFile.size / 1024).toFixed(1)} KB
+                </p>
+                {isAnalyzing && (
+                  <div className="flex items-center justify-center gap-2 text-xs text-indigo-600">
+                    <div className="animate-spin w-3 h-3 border border-indigo-600 border-t-transparent rounded-full"></div>
+                    Analyzing file...
+                  </div>
+                )}
+                {analysisError && (
+                  <div className="flex items-center justify-center gap-1 text-xs text-red-600">
+                    <AlertCircle className="w-3 h-3" />
+                    {analysisError}
+                  </div>
+                )}
+                {fileAnalysis && !isAnalyzing && (
+                  <div className="flex items-center justify-center gap-1 text-xs text-green-600">
+                    <CheckCircle className="w-3 h-3" />
+                    {fileAnalysis.stats.totalRows} rows,{' '}
+                    {fileAnalysis.stats.columns} columns detected
+                  </div>
+                )}
+                <button
+                  onClick={() => onFileUpload?.(null)}
+                  className="text-xs text-red-600 hover:text-red-700"
+                >
+                  Remove file
+                </button>
+              </div>
+            ) : (
+              <>
+                <Layers className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                <label
+                  htmlFor="transform-file-upload"
+                  className="text-sm font-medium text-indigo-600 hover:text-indigo-700 cursor-pointer"
+                >
+                  Click to upload
+                </label>
+                <p className="text-xs text-gray-600 mt-1">
+                  or drag and drop CSV, JSON, or Excel files
+                </p>
+              </>
+            )}
+          </div>
+
+          {fileAnalysis && !isAnalyzing && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-indigo-50 border border-indigo-200 rounded-lg p-4"
+            >
+              <h5 className="text-sm font-semibold text-indigo-900 mb-2">
+                Transformation Options Available
+              </h5>
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div className="flex items-start gap-2">
+                  <CheckCircle className="w-3 h-3 text-indigo-600 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="font-medium text-indigo-900">
+                      Transform Data
+                    </p>
+                    <p className="text-indigo-700">
+                      Rename, convert types, calculate fields
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <CheckCircle className="w-3 h-3 text-indigo-600 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="font-medium text-indigo-900">Anonymize PII</p>
+                    <p className="text-indigo-700">
+                      Mask, hash, or remove sensitive data
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <p className="text-xs text-indigo-800 mt-3">
+                You&apos;ll be able to select specific transformations in the
+                next step.
+              </p>
+            </motion.div>
+          )}
         </motion.div>
       )}
     </div>

@@ -11,6 +11,7 @@
     "demo:consumer": "hardhat run scripts/demos/02-dataset-consumer-flow.ts --network filecoin-calibration",
     "demo:marketplace": "hardhat run scripts/demos/03-marketplace-flow.ts --network filecoin-calibration",
     "demo:lineage": "hardhat run scripts/demos/04-lineage-tracking-flow.ts --network filecoin-calibration",
+    "demo:transformation": "hardhat run scripts/demos/05-transformation-anonymization-flow.ts --network filecoin-calibration",
     "demo:all": "npm run demo:creator && npm run demo:consumer && npm run demo:marketplace && npm run demo:lineage"
   },
   "keywords": [],

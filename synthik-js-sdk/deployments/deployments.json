@@ -1,0 +1,14 @@
+{
+  "network": "filecoin-calibration",
+  "timestamp": "2025-07-02T17:39:32.086Z",
+  "deployer": "0x311e26702ABa231c321C633d1ff6ecB4445f2308",
+  "usdcToken": "0xb3042734b608a1B16e9e86B374A3f3e389B4cDf0",
+  "treasury": "0x311e26702ABa231c321C633d1ff6ecB4445f2308",
+  "contracts": {
+    "ProvenanceManager": "0x29D8445d30d1a3d48dAcAdAf84b4F71FEd7E0930",
+    "DatasetRegistry": "0xCf296AbB8055263E56d9eD507bB221C5F4899646",
+    "DatasetMarketplace": "0xC06182A35AECb648Bc30514905aD8A156Bf7dffc",
+    "AutoAccessManager": "0x1EE7E24CD49E2347f73880a259f28950d0B6fB85"
+  },
+  "testDataset": "test-financial-dataset"
+}

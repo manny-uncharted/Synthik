@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft,
@@ -19,15 +19,17 @@ import {
   DatasetParameters,
   DatasetPreview,
   DatasetVisibility,
+  TransformationBuilder,
+  AnonymizationOptions,
 } from './index';
 import { ModelSelector, getModelById } from '../model';
 import {
   datasetGenerationService,
   DATASET_TYPES,
   DataRecord,
+  dataAugmentationService,
 } from '../../services/dataset-generation';
 
-// Export these interfaces for reuse
 export interface DatasetConfig {
   name: string;
   description: string;
@@ -156,8 +158,131 @@ export default function CreateDatasetFlow({
   const [currentStep, setCurrentStep] = useState(1);
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [generationProgress, setGenerationProgress] = useState(0);
+  const [transformedData, setTransformedData] = useState<DataRecord[] | null>(
+    null
+  );
+  const [activeTransformTab, setActiveTransformTab] = useState<
+    'transform' | 'anonymize'
+  >('transform');
+  const [fileAnalysis, setFileAnalysis] = useState<{
+    data: DataRecord[];
+    schema: SchemaField[];
+  } | null>(null);
+
+  // Analyze uploaded file for transformation
+  useEffect(() => {
+    const analyzeFile = async () => {
+      if (config.datasetType === 'transformation' && config.uploadedFile) {
+        try {
+          const analysis = await dataAugmentationService.parseUploadedFile(
+            config.uploadedFile
+          );
+          setFileAnalysis({
+            data: analysis.data,
+            schema: analysis.schema,
+          });
+          setConfig({ ...config, schema: analysis.schema });
+        } catch (error) {
+          console.error('Failed to analyze file:', error);
+        }
+      }
+    };
+    analyzeFile();
+  }, [config.datasetType, config.uploadedFile]);
+
+  // Component for transformation/anonymization tabs
+  const TransformationAnonymizationTabs = ({
+    uploadedFile,
+    onTransform,
+  }: {
+    uploadedFile: File | null | undefined;
+    onTransform: (data: DataRecord[], schema: SchemaField[]) => void;
+  }) => {
+    if (!fileAnalysis || !uploadedFile) {
+      return (
+        <div className="text-center py-8">
+          <p className="text-gray-600">
+            Please upload a file in step 1 to proceed with transformation.
+          </p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-6">
+        {/* Tab Navigation */}
+        <div className="flex gap-1 p-1 bg-gray-100 rounded-lg">
+          <button
+            onClick={() => setActiveTransformTab('transform')}
+            className={`flex-1 px-4 py-2 rounded-md font-medium text-sm transition-all ${
+              activeTransformTab === 'transform'
+                ? 'bg-white text-gray-900 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            Transform Data
+          </button>
+          <button
+            onClick={() => setActiveTransformTab('anonymize')}
+            className={`flex-1 px-4 py-2 rounded-md font-medium text-sm transition-all ${
+              activeTransformTab === 'anonymize'
+                ? 'bg-white text-gray-900 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            Anonymize Data
+          </button>
+        </div>
+
+        {/* Tab Content */}
+        {activeTransformTab === 'transform' ? (
+          <TransformationBuilder
+            data={transformedData || fileAnalysis.data}
+            schema={fileAnalysis.schema}
+            onTransform={onTransform}
+          />
+        ) : (
+          <AnonymizationOptions
+            data={transformedData || fileAnalysis.data}
+            schema={fileAnalysis.schema}
+            onAnonymize={(anonymizedData) =>
+              onTransform(anonymizedData, fileAnalysis.schema)
+            }
+          />
+        )}
+      </div>
+    );
+  };
 
   const generatePreview = async () => {
+    // For transformation type, use the transformed data as preview
+    if (config.datasetType === 'transformation') {
+      if (transformedData) {
+        setPreviewData({
+          rows: transformedData.map((row) => {
+            const cleanRow: Record<
+              string,
+              string | number | boolean | Date | object
+            > = {};
+            Object.entries(row).forEach(([key, value]) => {
+              if (value !== null) {
+                cleanRow[key] = value;
+              } else {
+                cleanRow[key] = '';
+              }
+            });
+            return cleanRow;
+          }),
+          schema: config.schema.map((f) => ({ name: f.name, type: f.type })),
+          totalRows: transformedData.length,
+          generationTime: 0.1,
+        });
+      } else {
+        setGenerationError('Please apply transformations first');
+      }
+      return;
+    }
+
     setIsGenerating(true);
     setGenerationError(null);
 
@@ -243,53 +368,65 @@ export default function CreateDatasetFlow({
 
       // If exporting full dataset
       if (exportFull) {
-        setIsGenerating(true);
-        setGenerationError(null);
-        setGenerationProgress(0);
-
-        try {
-          const model = getModelById(selectedModel);
-          if (!model) {
-            throw new Error('Please select a model');
+        // For transformation type, export all transformed data
+        if (config.datasetType === 'transformation') {
+          if (transformedData) {
+            dataToExport = transformedData;
+            filename = `${config.name || 'dataset'}_transformed.${format}`;
+          } else {
+            setGenerationError('No transformed data to export');
+            return;
           }
-
-          console.log('Starting full dataset generation for export...');
-
-          // Use the dataset generation service directly
-          const generator = datasetGenerationService;
-          const request = {
-            model,
-            config,
-            streamCallback: (progress: number) => {
-              console.log(`Export generation progress: ${progress}%`);
-              setGenerationProgress(progress);
-            },
-          };
-
-          // Generate the full dataset
-          const response = await generator.generateDataset(request);
-          console.log(`Full dataset generated: ${response.data.length} rows`);
-
-          dataToExport = response.data;
-          filename = `${config.name || 'dataset'}_full.${format}`;
-
-          // Update preview data with full dataset info
-          setPreviewData({
-            ...previewData,
-            totalRows: response.metadata.totalRows,
-            generationTime: response.metadata.generationTime,
-          });
-        } catch (error) {
-          console.error('Full generation error:', error);
-          setGenerationError(
-            error instanceof Error
-              ? error.message
-              : 'Failed to generate full dataset'
-          );
-          return;
-        } finally {
-          setIsGenerating(false);
+        } else {
+          // For generation types, generate full dataset
+          setIsGenerating(true);
+          setGenerationError(null);
           setGenerationProgress(0);
+
+          try {
+            const model = getModelById(selectedModel);
+            if (!model) {
+              throw new Error('Please select a model');
+            }
+
+            console.log('Starting full dataset generation for export...');
+
+            // Use the dataset generation service directly
+            const generator = datasetGenerationService;
+            const request = {
+              model,
+              config,
+              streamCallback: (progress: number) => {
+                console.log(`Export generation progress: ${progress}%`);
+                setGenerationProgress(progress);
+              },
+            };
+
+            // Generate the full dataset
+            const response = await generator.generateDataset(request);
+            console.log(`Full dataset generated: ${response.data.length} rows`);
+
+            dataToExport = response.data;
+            filename = `${config.name || 'dataset'}_full.${format}`;
+
+            // Update preview data with full dataset info
+            setPreviewData({
+              ...previewData,
+              totalRows: response.metadata.totalRows,
+              generationTime: response.metadata.generationTime,
+            });
+          } catch (error) {
+            console.error('Full generation error:', error);
+            setGenerationError(
+              error instanceof Error
+                ? error.message
+                : 'Failed to generate full dataset'
+            );
+            return;
+          } finally {
+            setIsGenerating(false);
+            setGenerationProgress(0);
+          }
         }
       }
 
@@ -390,10 +527,17 @@ export default function CreateDatasetFlow({
   const isStepComplete = (stepId: number) => {
     switch (stepId) {
       case 1:
-        return !!config.datasetType;
+        return (
+          !!config.datasetType &&
+          (config.datasetType !== 'transformation' || !!config.uploadedFile)
+        );
       case 2:
-        return !!selectedModel;
+        // Skip model selection for transformation type
+        return config.datasetType === 'transformation' || !!selectedModel;
       case 3:
+        if (config.datasetType === 'transformation') {
+          return !!transformedData && config.schema.length > 0;
+        }
         return config.name && config.schema.length > 0;
       case 4:
         return true; // Visibility always has a default
@@ -533,22 +677,45 @@ export default function CreateDatasetFlow({
               exit={{ opacity: 0, x: -20 }}
               className="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
             >
-              <div className="text-center mb-6">
-                <div className="w-14 h-14 bg-gradient-to-br from-indigo-100 to-blue-100 rounded-xl flex items-center justify-center mx-auto mb-3">
-                  <Sparkles className="w-7 h-7 text-blue-600" />
+              {config.datasetType === 'transformation' ? (
+                <div className="text-center py-8">
+                  <div className="w-14 h-14 bg-gradient-to-br from-green-100 to-emerald-100 rounded-xl flex items-center justify-center mx-auto mb-3">
+                    <CheckCircle className="w-7 h-7 text-green-600" />
+                  </div>
+                  <h2 className="text-xl font-semibold text-gray-900 mb-1">
+                    No Model Required
+                  </h2>
+                  <p className="text-sm text-gray-600">
+                    Transformation and anonymization don&apos;t require an AI
+                    model
+                  </p>
+                  <button
+                    onClick={() => setCurrentStep(3)}
+                    className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                  >
+                    Continue to Transform
+                  </button>
                 </div>
-                <h2 className="text-xl font-semibold text-gray-900 mb-1">
-                  Select Your AI Model
-                </h2>
-                <p className="text-sm text-gray-600">
-                  Choose the model that best fits your data generation needs
-                </p>
-              </div>
+              ) : (
+                <>
+                  <div className="text-center mb-6">
+                    <div className="w-14 h-14 bg-gradient-to-br from-indigo-100 to-blue-100 rounded-xl flex items-center justify-center mx-auto mb-3">
+                      <Sparkles className="w-7 h-7 text-blue-600" />
+                    </div>
+                    <h2 className="text-xl font-semibold text-gray-900 mb-1">
+                      Select Your AI Model
+                    </h2>
+                    <p className="text-sm text-gray-600">
+                      Choose the model that best fits your data generation needs
+                    </p>
+                  </div>
 
-              <ModelSelector
-                selectedModel={selectedModel}
-                onModelSelect={setSelectedModel}
-              />
+                  <ModelSelector
+                    selectedModel={selectedModel}
+                    onModelSelect={setSelectedModel}
+                  />
+                </>
+              )}
             </motion.div>
           )}
 
@@ -566,17 +733,31 @@ export default function CreateDatasetFlow({
                   <Database className="w-7 h-7 text-cyan-600" />
                 </div>
                 <h2 className="text-xl font-semibold text-gray-900 mb-1">
-                  Configure Your Dataset
+                  {config.datasetType === 'transformation'
+                    ? 'Transform & Anonymize'
+                    : 'Configure Your Dataset'}
                 </h2>
                 <p className="text-sm text-gray-600">
-                  Define the structure and parameters
+                  {config.datasetType === 'transformation'
+                    ? 'Apply transformations and privacy protection'
+                    : 'Define the structure and parameters'}
                 </p>
               </div>
 
-              <DatasetParameters
-                config={config}
-                onConfigChange={(newConfig) => setConfig(newConfig)}
-              />
+              {config.datasetType === 'transformation' ? (
+                <TransformationAnonymizationTabs
+                  uploadedFile={config.uploadedFile}
+                  onTransform={(transformedData, newSchema) => {
+                    setConfig({ ...config, schema: newSchema });
+                    setTransformedData(transformedData);
+                  }}
+                />
+              ) : (
+                <DatasetParameters
+                  config={config}
+                  onConfigChange={(newConfig) => setConfig(newConfig)}
+                />
+              )}
             </motion.div>
           )}
 
@@ -652,12 +833,15 @@ export default function CreateDatasetFlow({
                           {config.datasetType}
                         </span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Model</span>
-                        <span className="font-medium">
-                          {getModelById(selectedModel)?.name || 'Not selected'}
-                        </span>
-                      </div>
+                      {config.datasetType !== 'transformation' && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Model</span>
+                          <span className="font-medium">
+                            {getModelById(selectedModel)?.name ||
+                              'Not selected'}
+                          </span>
+                        </div>
+                      )}
                       <div className="flex justify-between">
                         <span className="text-gray-600">Name</span>
                         <span className="font-medium">
@@ -722,10 +906,14 @@ export default function CreateDatasetFlow({
                       className="px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg font-medium hover:shadow-lg transition-all flex items-center gap-2 mx-auto"
                     >
                       <Rocket className="w-5 h-5" />
-                      Generate Dataset Preview
+                      {config.datasetType === 'transformation'
+                        ? 'Preview Transformed Data'
+                        : 'Generate Dataset Preview'}
                     </button>
                     <p className="text-xs text-gray-500 mt-2">
-                      This will generate a preview of the first 10 rows
+                      {config.datasetType === 'transformation'
+                        ? 'Review your transformed and anonymized data'
+                        : 'This will generate a preview of the first 10 rows'}
                     </p>
                   </div>
                 )}
