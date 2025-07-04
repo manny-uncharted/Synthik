@@ -19,13 +19,6 @@ import {
 export default function Home() {
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Data nodes for visualization
-  const dataNodes = Array.from({ length: 12 }, (_, i) => ({
-    id: i,
-    x: Math.random() * 100,
-    y: Math.random() * 100,
-  }));
-
   const codeExample = `from synthik import SynthikClient
 import datasets
 
@@ -142,7 +135,7 @@ trainer = dataset.get_trainer(
       </nav>
 
       {/* Hero Section - Asymmetric Layout */}
-      <section className="relative min-h-screen flex items-center px-8 lg:px-16 pt-24">
+      <section className="relative min-h-screen flex items-center px-8 lg:px-16">
         <div className="max-w-7xl mx-auto w-full grid lg:grid-cols-12 gap-12 items-center">
           {/* Left Content */}
           <motion.div
@@ -198,40 +191,239 @@ trainer = dataset.get_trainer(
 
           {/* Right Visual - Data Network Visualization */}
           <motion.div
-            className="lg:col-span-5 relative h-[500px] hidden lg:block"
+            className="lg:col-span-5 relative h-[600px] hidden lg:block"
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.8, delay: 0.2 }}
           >
-            <div className="absolute inset-0" ref={containerRef}>
-              {/* Animated data nodes */}
-              {dataNodes.map((node, i) => (
+            <div
+              className="absolute inset-0 flex items-center justify-center"
+              ref={containerRef}
+            >
+              {/* Background glow effect */}
+              <div className="absolute inset-0">
+                <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-indigo-500/20 rounded-full blur-3xl animate-pulse" />
+                <div className="absolute bottom-1/4 right-1/4 w-48 h-48 bg-purple-600/20 rounded-full blur-3xl animate-pulse delay-1000" />
+              </div>
+
+              {/* Network connections */}
+              <svg
+                className="absolute inset-0 w-full h-full"
+                style={{ filter: 'url(#glow)' }}
+              >
+                <defs>
+                  <filter id="glow">
+                    <feGaussianBlur stdDeviation="3" result="coloredBlur" />
+                    <feMerge>
+                      <feMergeNode in="coloredBlur" />
+                      <feMergeNode in="SourceGraphic" />
+                    </feMerge>
+                  </filter>
+                  <linearGradient
+                    id="lineGradient"
+                    x1="0%"
+                    y1="0%"
+                    x2="100%"
+                    y2="100%"
+                  >
+                    <stop offset="0%" stopColor="#6366f1" stopOpacity="0.6">
+                      <animate
+                        attributeName="stop-opacity"
+                        values="0.6;0.3;0.6"
+                        dur="3s"
+                        repeatCount="indefinite"
+                      />
+                    </stop>
+                    <stop offset="100%" stopColor="#a855f7" stopOpacity="0.3">
+                      <animate
+                        attributeName="stop-opacity"
+                        values="0.3;0.6;0.3"
+                        dur="3s"
+                        repeatCount="indefinite"
+                      />
+                    </stop>
+                  </linearGradient>
+                </defs>
+
+                {/* Connection lines */}
+                {Array.from({ length: 8 }, (_, i) => {
+                  const angle = (i * Math.PI * 2) / 8;
+                  const x1 = 50 + Math.cos(angle) * 30;
+                  const y1 = 50 + Math.sin(angle) * 30;
+                  const x2 = 50 + Math.cos(angle) * 15;
+                  const y2 = 50 + Math.sin(angle) * 15;
+
+                  return (
+                    <line
+                      key={`line-${i}`}
+                      x1={`${x1}%`}
+                      y1={`${y1}%`}
+                      x2={`${x2}%`}
+                      y2={`${y2}%`}
+                      stroke="url(#lineGradient)"
+                      strokeWidth="2"
+                      strokeDasharray="5,5"
+                    >
+                      <animate
+                        attributeName="stroke-dashoffset"
+                        values="0;10"
+                        dur="2s"
+                        repeatCount="indefinite"
+                      />
+                    </line>
+                  );
+                })}
+              </svg>
+
+              {/* Outer data nodes */}
+              {Array.from({ length: 8 }, (_, i) => {
+                const angle = (i * Math.PI * 2) / 8;
+                const x = 50 + Math.cos(angle) * 35;
+                const y = 50 + Math.sin(angle) * 35;
+
+                return (
+                  <motion.div
+                    key={`node-${i}`}
+                    className="absolute"
+                    style={{
+                      left: `${x}%`,
+                      top: `${y}%`,
+                      transform: 'translate(-50%, -50%)',
+                    }}
+                    animate={{
+                      scale: [1, 1.1, 1],
+                      opacity: [0.8, 1, 0.8],
+                    }}
+                    transition={{
+                      duration: 2,
+                      delay: i * 0.2,
+                      repeat: Infinity,
+                      ease: 'easeInOut',
+                    }}
+                  >
+                    <div className="relative">
+                      {/* Glow effect */}
+                      <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full blur-xl opacity-60" />
+
+                      {/* Node */}
+                      <div className="relative w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center">
+                        <div className="w-8 h-8 bg-white/90 rounded-full flex items-center justify-center">
+                          {i % 3 === 0 && (
+                            <Database className="w-4 h-4 text-indigo-600" />
+                          )}
+                          {i % 3 === 1 && (
+                            <Network className="w-4 h-4 text-purple-600" />
+                          )}
+                          {i % 3 === 2 && (
+                            <Shield className="w-4 h-4 text-indigo-600" />
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Orbiting particle */}
+                      <motion.div
+                        className="absolute w-2 h-2 bg-gradient-to-br from-indigo-400 to-purple-400 rounded-full"
+                        animate={{
+                          rotate: 360,
+                        }}
+                        transition={{
+                          duration: 3,
+                          repeat: Infinity,
+                          ease: 'linear',
+                          delay: i * 0.3,
+                        }}
+                        style={{
+                          transformOrigin: '20px 20px',
+                        }}
+                      />
+                    </div>
+                  </motion.div>
+                );
+              })}
+
+              {/* Central hub */}
+              <motion.div
+                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
+                animate={{
+                  rotate: [0, 360],
+                }}
+                transition={{
+                  duration: 20,
+                  repeat: Infinity,
+                  ease: 'linear',
+                }}
+              >
+                {/* Rotating rings */}
+                <div className="absolute inset-0 w-32 h-32 -translate-x-1/2 -translate-y-1/2 left-1/2 top-1/2">
+                  <div className="absolute inset-0 border-2 border-indigo-500/30 rounded-full animate-spin-slow" />
+                  <div className="absolute inset-2 border-2 border-purple-500/30 rounded-full animate-spin-reverse" />
+                  <div className="absolute inset-4 border-2 border-indigo-500/20 rounded-full animate-spin-slower" />
+                </div>
+              </motion.div>
+
+              {/* Central core */}
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
                 <motion.div
-                  key={node.id}
-                  className="data-node"
-                  style={{
-                    left: `${node.x}%`,
-                    top: `${node.y}%`,
-                  }}
                   animate={{
-                    x: Math.sin(Date.now() / 1000 + i) * 20,
-                    y: Math.cos(Date.now() / 1000 + i) * 20,
+                    scale: [1, 1.05, 1],
                   }}
                   transition={{
-                    duration: 4,
+                    duration: 2,
                     repeat: Infinity,
+                    ease: 'easeInOut',
+                  }}
+                >
+                  {/* Core glow */}
+                  <div className="absolute inset-0 w-24 h-24 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl blur-2xl opacity-40" />
+
+                  {/* Core container */}
+                  <div className="relative w-24 h-24 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl p-[2px]">
+                    <div className="w-full h-full bg-white rounded-2xl flex items-center justify-center">
+                      <div className="relative">
+                        <Sparkles className="w-8 h-8 text-indigo-600" />
+                        <motion.div
+                          className="absolute -inset-2"
+                          animate={{
+                            opacity: [0, 1, 0],
+                            scale: [0.8, 1.2, 0.8],
+                          }}
+                          transition={{
+                            duration: 2,
+                            repeat: Infinity,
+                            ease: 'easeOut',
+                          }}
+                        >
+                          <Sparkles className="w-12 h-12 text-indigo-400/30" />
+                        </motion.div>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              </div>
+
+              {/* Floating data particles */}
+              {Array.from({ length: 20 }, (_, i) => (
+                <motion.div
+                  key={`particle-${i}`}
+                  className="absolute w-1 h-1 bg-gradient-to-br from-indigo-400 to-purple-400 rounded-full"
+                  initial={{
+                    x: Math.random() * 400 - 200,
+                    y: Math.random() * 400 - 200,
+                    opacity: 0,
+                  }}
+                  animate={{
+                    x: Math.random() * 400 - 200,
+                    y: Math.random() * 400 - 200,
+                    opacity: [0, 1, 0],
+                  }}
+                  transition={{
+                    duration: Math.random() * 5 + 5,
+                    repeat: Infinity,
+                    delay: Math.random() * 5,
                     ease: 'linear',
                   }}
                 />
               ))}
-
-              {/* Central element */}
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-                <div className="w-32 h-32 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl opacity-10 animate-pulse" />
-                <div className="absolute inset-4 bg-white rounded-xl shadow-2xl flex items-center justify-center">
-                  <Database className="w-8 h-8 text-indigo-600" />
-                </div>
-              </div>
             </div>
           </motion.div>
         </div>

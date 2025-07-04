@@ -11,7 +11,7 @@ import {
   Clock,
   Award,
 } from 'lucide-react';
-import ModelCard from '../components/ModelCard';
+import { ModelCard } from '../components/model';
 import Layout from '../components/Layout';
 
 // Mock data for models
@@ -216,8 +216,8 @@ export default function Models() {
               </span>
             </h1>
             <p className="text-xl text-gray-600 leading-relaxed">
-              Discover and use models trained on Synthik datasets. Every
-              model is verified on-chain with complete training lineage.
+              Discover and use models trained on Synthik datasets. Every model
+              is verified on-chain with complete training lineage.
             </p>
           </div>
 
