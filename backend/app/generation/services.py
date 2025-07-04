@@ -20,7 +20,8 @@ _TEMPLATES_STORE = [
         "name": "User Profiles",
         "description": "Synthetic user profile data (name, email, signup date)",
         "category": "user",
-        "schema": [
+        # 👇 RENAME THIS KEY from "schema" to "data_schema_field"
+        "data_schema_field": [
             {"id": "name", "name": "name", "type": "string", "description": "Full name", "constraints": {"required": True}},
             {"id": "email", "name": "email", "type": "string", "description": "Email address", "constraints": {"required": True, "pattern": r"[^@]+@[^@]+\.[^@]+"}},
             {"id": "signup_date", "name": "signup_date", "type": "datetime", "description": "Date of signup", "constraints": {"required": True}}
@@ -37,7 +38,8 @@ _TEMPLATES_STORE = [
         "name": "IoT Sensor Readings",
         "description": "Simulated temperature & humidity sensor data",
         "category": "iot",
-        "schema": [
+        # 👇 RENAME THIS KEY from "schema" to "data_schema_field"
+        "data_schema_field": [
             {"id": "timestamp", "name": "timestamp", "type": "datetime", "description": "Reading time", "constraints": {"required": True}},
             {"id": "temp_c",    "name": "temp_c",    "type": "number",   "description": "Temperature in °C", "constraints": {"required": True, "min": -40, "max": 85}},
             {"id": "humidity",  "name": "humidity",  "type": "number",   "description": "Relative humidity %", "constraints": {"required": True, "min": 0,   "max": 100}}
@@ -51,12 +53,14 @@ _TEMPLATES_STORE = [
     }
 ]
 
+# No changes needed in the rest of the file
 def list_templates() -> List[Template]:
     """
     Return the list of available dataset templates.
     """
     logger.info("generation.templates.list")
     return [Template(**tpl) for tpl in _TEMPLATES_STORE]
+
 
 def generate_preview(config: PreviewConfig) -> Tuple[List[dict], float, float]:
     """

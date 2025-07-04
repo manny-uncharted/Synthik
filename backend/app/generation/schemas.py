@@ -3,7 +3,19 @@ from typing import List, Any, Dict, Optional, Literal
 from datetime import datetime
 
 
-from app.dataset.schemas import SchemaField  # assuming SchemaField is already defined
+class Constraints(BaseModel):
+    required: Optional[bool] = None
+    min: Optional[float] = None
+    max: Optional[float] = None
+    pattern: Optional[str] = None
+
+
+class SchemaField(BaseModel):
+    id: str
+    name: str
+    type: str
+    description: str
+    constraints: Constraints
 
 class Template(BaseModel):
     id: str
@@ -65,3 +77,4 @@ class GenerationJobResponse(BaseModel):
     class Config:
         from_attributes = True
         populate_by_name = True
+
