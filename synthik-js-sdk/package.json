@@ -12,7 +12,7 @@
     "format": "prettier --write src/**/*.ts",
     "prepublishOnly": "npm run build"
   },
-  "keywords": [
+  "keywords": [ 
     "synthik",
     "synthetic-data",
     "filecoin",
