@@ -13,7 +13,7 @@ async function quickStart() {
   // Step 1: Initialize the SDK
   console.log('📋 Step 1: Initialize SDK');
 
-  const privateKey = "***PRIVATE_KEY_REMOVED***";
+  const privateKey = process.env.PRIVATE_KEY;
   if (!privateKey || privateKey.length < 32) {
     console.log('❌ Missing PRIVATE_KEY environment variable');
     console.log('💡 Please set your private key:');
@@ -34,7 +34,7 @@ async function quickStart() {
     // Add your AI model API keys (optional - get free keys from providers)
     apiKeys: {
       openai: process.env.OPENAI_API_KEY, // Get from: https://platform.openai.com/api-keys
-      google: '***GOOGLE_API_KEY_REMOVED***', // Get from: https://aistudio.google.com/app/apikey
+      google: process.env.GOOGLE_API_KEY, // Get from: https://aistudio.google.com/app/apikey
     },
 
     storage: {
