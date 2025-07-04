@@ -34,13 +34,7 @@ AWS_SECRET_ACCESS_KEY_MLOPS = os.getenv("AWS_SECRET_ACCESS_KEY_MLOPS", "")
 AWS_REGION_MLOPS = os.getenv("AWS_REGION_MLOPS", "us-east-1")
 
 HUGGING_FACE_HUB_TOKEN_MLOPS = os.getenv("HUGGING_FACE_HUB_TOKEN_MLOPS", "")
-# AGGREGATOR_URL = "https://walrus.bnshub.org/aggregator/"
-PUBLISHER_URL = "https://publisher.walrus-testnet.walrus.space"
-AGGREGATOR_URL = "https://aggregator.walrus-testnet.walrus.space"
-# PUBLISHER_URL = "https://walrus-publisher.rubynodes.io"
-# AGGREGATOR_URL = "https://walrus-aggregator.rubynodes.io"
-# AGGREGATOR_URL = "http://44.211.230.232:8080"
-# PUBLISHER_URL = "http://44.211.230.232:8081"
+
 TESTING_MODE_BYPASS_WEBHOOK_AUTH=True
 LOCAL_TRAINING_RUNS_DIR = os.getenv("LOCAL_TRAINING_RUNS_DIR", "/tmp/ai_platform_training_runs")
 LOCAL_TRAINING_BASE_DIR = os.getenv("LOCAL_TRAINING_BASE_DIR", "/tmp/ai_platform_training_runs")

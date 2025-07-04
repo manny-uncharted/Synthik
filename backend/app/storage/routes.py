@@ -38,7 +38,7 @@ def _remove_temp_directory(temp_dir_path: str):
         pass
 
 @router.post("/upload")
-async def upload_file_to_walrus(
+async def upload_file_to_akave(
     file: UploadFile = File(...),
     dataset_id: Optional[str] = Query(None, description="Name of the bucket"),
 ):
@@ -71,7 +71,7 @@ async def upload_file_to_walrus(
 
 
 @router.get("/download")
-async def download_file_from_walrus(
+async def download_file_from_akave(
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_session),
     dataset_id: Optional[str] = None,

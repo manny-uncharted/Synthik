@@ -1,7 +1,7 @@
 import enum
 
 class StorageType(str, enum.Enum):
-    WALRUS = "walrus"
+    AKAVE = "akave"
     LOCAL_FS = "local_fs"
     GCS = "gcs"
     AZURE_BLOB = "azure_blob"
@@ -9,7 +9,7 @@ class StorageType(str, enum.Enum):
 
 
 class ModelStorageType(str, enum.Enum):
-    WALRUS = "walrus"
+    AKAVE = "akave"
     LOCAL_FS = "local_fs"
     GCS = "gcs"
     AZURE_BLOB = "azure_blob"

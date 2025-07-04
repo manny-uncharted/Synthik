@@ -106,7 +106,7 @@ def upgrade() -> None:
     sa.Column('status', sa.Enum('PENDING', 'PREPARING_DATA', 'SUBMITTED', 'QUEUED', 'RUNNING', 'COMPLETED', 'FAILED', 'CANCELLED', 'UPDATING_METRICS', name='jobstatus'), nullable=False),
     sa.Column('external_job_id', sa.String(), nullable=True),
     sa.Column('metrics', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
-    sa.Column('output_model_storage_type', sa.Enum('WALRUS', 'LOCAL_FS', 'GCS', 'AZURE_BLOB', 'HUGGING_FACE', name='modelstoragetype'), nullable=True),
+    sa.Column('output_model_storage_type', sa.Enum('AKAVE', 'LOCAL_FS', 'GCS', 'AZURE_BLOB', 'HUGGING_FACE', name='modelstoragetype'), nullable=True),
     sa.Column('output_model_url', sa.String(), nullable=True),
     sa.Column('huggingface_model_url', sa.String(), nullable=True),
     sa.Column('logs_url', sa.String(), nullable=True),

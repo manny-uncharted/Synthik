@@ -56,7 +56,7 @@ def parse_args():
 
 def load_and_tokenize_data(data_url, tokenizer, text_column, max_seq_length, task_type):
     logger.info(f"Loading dataset from {data_url}")
-    # Similar to text classification, adapt for S3/GCS/Walrus or HF datasets
+    # Similar to text classification, adapt for S3/GCS/Akave or HF datasets
     # This example assumes a single text column for Causal LM.
     # For Seq2Seq, you'd have an input and target text column.
     try:

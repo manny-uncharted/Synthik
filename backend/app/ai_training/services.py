@@ -26,7 +26,6 @@ from app.core.constants import (
     GCP_SERVICE_ACCOUNT_KEY_PATH_MLOPS,
     HUGGING_FACE_HUB_TOKEN_MLOPS
 )
-from app.storage.walrus import WalrusClient
 from app.ai_training.utils.hf_uploader import download_and_extract_artifacts, upload_to_huggingface
 from app.ai_training.utils.data_preparation import prepare_dataset_for_local_training
 from app.ai_training.runners.local_script_runner import execute_local_training_script
@@ -267,20 +266,20 @@ async def submit_training_job_to_platform(job_id: str, db_provider: Callable[[],
                 logger.info(f"[Service job_id={job.id}]: Submitting to Hugging Face (via Space creation).")
                 
                 if not job.processed_dataset.storage_url:
-                    error_message_from_platform = "Processed dataset's Walrus storage URL is missing."
+                    error_message_from_platform = "Processed dataset's Akave storage URL is missing."
                     logger.error(f"[Service job_id={job.id}]: {error_message_from_platform}")
                     # The error handling logic at the end of the function will catch this.
                 else:
-                    dataset_walrus_url = job.processed_dataset.storage_url
-                    print(f"[Service job_id={job.id}]: Dataset Walrus URL: {dataset_walrus_url}")
+                    dataset_akave_url = job.processed_dataset.storage_url
+                    print(f"[Service job_id={job.id}]: Dataset Akave URL: {dataset_akave_url}")
                     dataset_blob_id: Optional[str] = None
                     try:
-                        dataset_blob_id = dataset_walrus_url.split("/")[-1]
+                        dataset_blob_id = dataset_akave_url.split("/")[-1]
                         print(f"[Service job_id={job.id}]: Parsed dataset blob_id: {dataset_blob_id}")
                         if not dataset_blob_id: # Handle cases like trailing slash or empty segment
                             raise ValueError("Parsed blob_id is empty.")
                     except Exception as e:
-                        error_message_from_platform = f"Invalid dataset storage URL format ('{dataset_walrus_url}'). Cannot extract blob_id. Error: {e}"
+                        error_message_from_platform = f"Invalid dataset storage URL format ('{dataset_akave_url}'). Cannot extract blob_id. Error: {e}"
                         logger.error(f"[Service job_id={job.id}]: {error_message_from_platform}")
                         # Error will be handled by the common block below
 
@@ -328,10 +327,10 @@ async def submit_training_job_to_platform(job_id: str, db_provider: Callable[[],
                             local_dataset_path_for_hf = Path(temp_dataset_download_dir) / temp_filename
                             print(f"[Service job_id={job.id}]: Local dataset path for Hugging Face: '{local_dataset_path_for_hf}'")
                             
-                            print(f"[Service job_id={job.id}]: Downloading dataset blob '{dataset_blob_id}' from Walrus to '{local_dataset_path_for_hf}'")
+                            print(f"[Service job_id={job.id}]: Downloading dataset blob '{dataset_blob_id}' from Akave to '{local_dataset_path_for_hf}'")
                             
-                            async with WalrusClient() as walrus_client: # Ensure WalrusClient is correctly initialized
-                                await walrus_client.read_blob(blob_id=dataset_blob_id, output_path=local_dataset_path_for_hf)
+                            async with AkaveLinkAPI() as akave_client: # Ensure AkaveLinkAPI is correctly initialized
+                                await akave_client.download_file(blob_id=dataset_blob_id, output_path=local_dataset_path_for_hf)
                             
                             if not local_dataset_path_for_hf.exists() or local_dataset_path_for_hf.stat().st_size == 0:
                                 raise FileNotFoundError(f"Downloaded dataset file '{local_dataset_path_for_hf}' is missing or empty.")

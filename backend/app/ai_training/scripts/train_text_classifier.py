@@ -46,7 +46,7 @@ def parse_args():
 
 def load_and_preprocess_data(data_url, text_column, label_column, tokenizer, test_size=0.2):
     logger.info(f"Loading data from: {data_url}")
-    # This is a simplified loader. In reality, handle S3/GCS/Walrus URIs.
+    # This is a simplified loader. In reality, handle S3/GCS/Akave URIs.
     # For example, if data_url is S3, use s3fs or boto3 to download, then pd.read_csv.
     # If using HF datasets, it can often load directly from s3:// or http://
     try:

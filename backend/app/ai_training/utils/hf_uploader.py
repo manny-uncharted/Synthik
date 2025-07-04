@@ -278,7 +278,7 @@ async def download_and_extract_artifacts(
                 logger.error(f"Local artifact path {source_path} is neither a file nor a directory.")
                 return False
         else:
-            # Handle Walrus, Azure Blob, etc. here or raise error
+            # Handle Akave, Azure Blob, etc. here or raise error
             logger.error(f"Unsupported artifact storage type for download: {artifact_storage_type}")
             return False
 

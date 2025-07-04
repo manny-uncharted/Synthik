@@ -5,7 +5,7 @@ from urllib.parse import urlparse
 import uuid
 
 from app.core.constants import FASTAPI_BASE_URL_CAMPAIGN_API, HUGGING_FACE_HUB_TOKEN_MLOPS, AWS_ACCESS_KEY_ID_MLOPS, AWS_SECRET_ACCESS_KEY_MLOPS, AWS_REGION_MLOPS
-from app.storage import WalrusClient
+from app.storage import AkaveLinkAPI
 
 try:
     from app.ai_agents.enterprise_workflow import (
@@ -36,19 +36,19 @@ logger = logging.getLogger("MLOpsAPI_v2") # Updated logger name
 # For Hugging Face Hub: pip install huggingface_hub
 # These tools would ideally live in a separate module and be registered with the EnterpriseWorkflowManager.
 
-class WalrusStorageTool(WFBaseTool):
-    name: str = "walrus_storage"
-    description: str = "Interacts with Walrus storage to upload, download, and read blobs."
+class AkaveStorageTool(WFBaseTool):
+    name: str = "akave_storage"
+    description: str = "Interacts with Akave storage to upload, download, and read blobs."
 
     def __init__(self, aggregator_url: str, publisher_url: str):
         super().__init__()
-        self.walrus_client = WalrusClient(aggregator_url=aggregator_url, publisher_url=publisher_url)
+        self.akave_client = AkaveLinkAPI()
 
     def _run(self, action: str, **kwargs: Any) -> Dict[str, Any]:
-        raise NotImplementedError("Use _arun for Walrus operations as they are asynchronous.")
+        raise NotImplementedError("Use _arun for Akave operations as they are asynchronous.")
 
     async def _arun(self, action: str, **kwargs: Any) -> Dict[str, Any]:
-        logger.info(f"WalrusStorageTool: Action='{action}', Args='{kwargs}'")
+        logger.info(f"AkaveStorageTool: Action='{action}', Args='{kwargs}'")
         try:
             if action == "upload":
                 data = kwargs.get("data")
@@ -61,10 +61,10 @@ class WalrusStorageTool(WFBaseTool):
                     return {"status": "error", "action": action, "message": "Provide only one of 'data' or 'file_path'."}
 
                 if data is not None:
-                    response = await self.walrus_client.store_blob(data=data, epochs=epochs, send_object_to=send_object_to, deletable=deletable)
+                    response = await self.akave_client.upload_file(bucket_name=send_object_to, file_path=data)
                     return {"status": "success", "action": action, "response": response}
                 elif file_path is not None:
-                    response = await self.walrus_client.store_blob(data=Path(file_path), epochs=epochs, send_object_to=send_object_to, deletable=deletable)
+                    response = await self.akave_client.upload_file(bucket_name=send_object_to, file_path=file_path)
                     return {"status": "success", "action": action, "response": response}
                 else:
                     return {"status": "error", "action": action, "message": "Must provide 'data' or 'file_path' for upload."}
@@ -75,7 +75,7 @@ class WalrusStorageTool(WFBaseTool):
                 if not blob_id:
                     return {"status": "error", "action": action, "message": "Must provide 'blob_id' for download."}
                 try:
-                    data = await self.walrus_client.read_blob(blob_id=blob_id, output_path=Path(output_path) if output_path else None)
+                    data = await self.akave_client.download_file(bucket_name=blob_id, file_name=blob_id, output_dir=output_path)
                     if output_path:
                         return {"status": "success", "action": action, "message": f"Blob downloaded to {output_path}"}
                     else:
@@ -88,33 +88,24 @@ class WalrusStorageTool(WFBaseTool):
                 if not blob_id:
                     return {"status": "error", "action": action, "message": "Must provide 'blob_id' to read."}
                 try:
-                    data = await self.walrus_client.read_blob(blob_id=blob_id)
+                    data = await self.akave_client.download_file(bucket_name=blob_id, file_name=blob_id, output_dir=".")
                     return {"status": "success", "action": action, "data": data}
                 except Exception as e:
                     return {"status": "error", "action": action, "message": f"Read failed: {e}"}
-
-            elif action == "get_api_specification":
-                try:
-                    spec = await self.walrus_client.get_api_specification()
-                    return {"status": "success", "action": action, "specification": spec}
-                except Exception as e:
-                    return {"status": "error", "action": action, "message": f"Failed to get API spec: {e}"}
 
             else:
                 return {"status": "error", "action": action, "message": f"Invalid action: {action}"}
         except Exception as e:
             return {"status": "error", "action": action, "message": f"Tool execution failed: {e}"}
-        finally:
-            await self.walrus_client.close()
 
 
 class DataPreprocessorTool(WFBaseTool):
     name: str = "data_preprocessor"
-    description: str = "Executes data preprocessing steps for AI training.  Handles downloading data from Walrus, preprocessing, and uploading results to Walrus."
+    description: str = "Executes data preprocessing steps for AI training.  Handles downloading data from Akave, preprocessing, and uploading results to Akave."
 
-    def __init__(self, walrus_storage_tool: "WalrusStorageTool"):
+    def __init__(self, akave_storage_tool: "AkaveStorageTool"):
         super().__init__()
-        self.walrus_storage_tool = walrus_storage_tool
+        self.akave_storage_tool = akave_storage_tool
 
 
     def _run(self, *args, **kwargs) -> Dict[str, Any]:
@@ -123,15 +114,15 @@ class DataPreprocessorTool(WFBaseTool):
 
     async def _arun(self, input_data_urls: Union[str, List[str]], output_bucket: str, output_key_prefix: str, processing_config: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Processes data for AI training, including downloading from Walrus, preprocessing, and uploading back to Walrus.
+        Processes data for AI training, including downloading from Akave, preprocessing, and uploading back to Akave.
 
         Args:
-            input_data_urls:  A URL (str) or a list of Walrus URLs (list of str) pointing to the input data.
-            output_bucket: The Walrus bucket to upload the processed data to.
-            output_key_prefix: The Walrus key prefix to use for the processed data.
+            input_data_urls:  A URL (str) or a list of Akave URLs (list of str) pointing to the input data.
+            output_bucket: The Akave bucket to upload the processed data to.
+            output_key_prefix: The Akave key prefix to use for the processed data.
             processing_config:  A dictionary containing configuration parameters for the preprocessing step.
         """
-        logger.info(f"DataPreprocessorTool: Processing data from '{input_data_urls}', Output: walrus://{output_bucket}/{output_key_prefix}, Config: {processing_config}")
+        logger.info(f"DataPreprocessorTool: Processing data from '{input_data_urls}', Config: {processing_config}")
 
         local_input_paths = []
         local_output_path = f"/tmp/processed_data_{str(uuid.uuid4())[:8]}"  # Local temp directory
@@ -139,28 +130,27 @@ class DataPreprocessorTool(WFBaseTool):
 
         # 1. take the onchain campaign id and then extract the campaign id and the campaign type
         # 2. Using the campaign id check the contribution submisssions and extract all the data urls.
-        # 3 using the data urls which are also the blob id download the data from Walrus.
+        # 3 using the data urls which are also the blob id download the data from Akave.
         # 4. Preprocess the data based on the campaign type.
-        # 5. Upload the processed data to Walrus and return the new blob id and store it as preprocessed dataset
+        # 5. Upload the processed data to Akave and return the new blob id and store it as preprocessed dataset
 
         try:
-            # 1. Download data from Walrus (handling single URL or list of URLs)
+            # 1. Download data from Akave (handling single URL or list of URLs)
             if isinstance(input_data_urls, str):
                 input_data_urls = [input_data_urls]  # Ensure it's always a list for consistent processing
 
             for i, input_data_url in enumerate(input_data_urls):
                 parsed_url = urlparse(input_data_url)
-                if parsed_url.scheme != "walrus":
-                    return {"status": "error", "message": f"Unsupported input URL scheme: {parsed_url.scheme}. Expected 'walrus://bucket/key'."}
-
+                
                 input_bucket = parsed_url.netloc
                 input_key = parsed_url.path.lstrip('/')
                 local_input_path = f"/tmp/input_data_{str(uuid.uuid4())[:8]}_{i}"  # Unique local path
                 local_input_paths.append(local_input_path)  # Store path for later processing
 
-                download_result = await self.walrus_storage_tool._arun(
+                download_result = await self.akave_storage_tool._arun(
                     action="download",
-                    blob_id=input_key,  # Assuming the key is the blob_id in Walrus
+                    bucket_name=input_bucket,
+                    blob_id=input_key,
                     output_path=local_input_path
                 )
 
@@ -182,8 +172,8 @@ class DataPreprocessorTool(WFBaseTool):
                 return {"status": "error", "message": f"Unsupported campaign type: {campaign_type}"}
             logger.info(f"DataPreprocessorTool: Preprocessing complete. Output saved to '{local_output_path}'.")
 
-            # 3. Upload processed data to Walrus
-            upload_result = await self.walrus_storage_tool._arun(
+            # 3. Upload processed data to Akave
+            upload_result = await self.akave_storage_tool._arun(
                 action="upload",
                 bucket=output_bucket,
                 key=processed_data_key,
@@ -193,13 +183,13 @@ class DataPreprocessorTool(WFBaseTool):
             if upload_result.get("status") == "error":
                 return {"status": "error", "message": f"Failed to upload processed data: {upload_result.get('message')}"}
 
-            processed_data_url = f"walrus://{output_bucket}/{processed_data_key}"
+            processed_data_url = f"akave://{output_bucket}/{processed_data_key}"
             logger.info(f"DataPreprocessorTool: Successfully uploaded processed data to '{processed_data_url}'.")
 
             return {
                 "status": "success",
                 "processed_data_url": processed_data_url,
-                "message": "Data preprocessing and upload to Walrus complete."
+                "message": "Data preprocessing and upload to Akave complete."
             }
 
         except Exception as e:

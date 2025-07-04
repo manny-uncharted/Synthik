@@ -1,6 +1,7 @@
-from app.storage.walrus import WalrusClient
+from app.storage.akave import AkaveLinkAPI
+
 
 __all__ = [
-    "WalrusClient"
+    "AkaveLinkAPI"
 ]
     

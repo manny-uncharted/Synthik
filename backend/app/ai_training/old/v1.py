@@ -85,7 +85,6 @@ fernet_cipher = Fernet(ENCRYPTION_KEY.encode())
 import enum
 
 class StorageType(str, enum.Enum):
-    WALRUS = "walrus" # Assuming S3-compatible
     LOCAL_FS = "local_fs"
     GCS = "gcs"
     AZURE_BLOB = "azure_blob"
@@ -302,12 +301,12 @@ class TrainingJobStatusUpdate(BaseModel):
 # --- Conceptual Tools for AI Training Workflows ---
 # These would be implemented in enterprise_workflow.py or a dedicated tools module.
 
-class WalrusStorageTool(WFBaseTool):
-    name: str = "walrus_storage_tool"
-    description: str = "Uploads or downloads data to/from Walrus (S3-compatible) storage."
+class AkaveStorageTool(WFBaseTool):
+    name: str = "akave_storage_tool"
+    description: str = "Uploads or downloads data to/from Akave storage."
     # Needs S3 client (boto3) and credentials configured (e.g., from environment)
     def _run(self, action: str, bucket: str, key: str, local_file_path: Optional[str] = None) -> Dict[str, Any]:
-        logger.info(f"WalrusStorageTool: {action} for bucket='{bucket}', key='{key}'")
+        logger.info(f"AkaveStorageTool: {action} for bucket='{bucket}', key='{key}'")
         # Placeholder for boto3 S3 interaction
         # if action == "upload": s3.upload_file(local_file_path, bucket, key)
         # if action == "download": s3.download_file(bucket, key, local_file_path)

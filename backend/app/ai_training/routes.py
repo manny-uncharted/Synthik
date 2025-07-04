@@ -40,7 +40,7 @@ from app.ai_training.schemas import (
     ModelListResponse,
     TrainingJobInfo,
 )
-from app.ai_training.utils.toolkit import WalrusStorageTool, DataPreprocessorTool
+from app.ai_training.utils.toolkit import AkaveStorageTool, DataPreprocessorTool
 from app.ai_training.services import (
     submit_training_job_to_platform,
     create_model, 
@@ -48,7 +48,7 @@ from app.ai_training.services import (
     list_models
 )
 from app.core.database import get_db
-from app.storage.walrus import WalrusClient
+from app.storage.akave import AkaveLinkAPI
 
 try:
     from app.ai_agents.enterprise_workflow import (
@@ -69,8 +69,7 @@ except ImportError as e:
         AWS_REGION = AWS_REGION_MLOPS
 
 
-WALRUS_AGGREGATOR_BLOB_URL_PREFIX = "https://aggregator.walrus-testnet.walrus.space/v1/blobs"
-WALRUS_PUBLISHER_BLOB_URL_PREFIX = "https://publisher.walrus-testnet.walrus.space/v1/blobs"
+
 
 
 
