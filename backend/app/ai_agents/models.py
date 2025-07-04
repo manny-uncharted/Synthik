@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import Column, String, DateTime, func as sql_func, Index
+from sqlalchemy import Column, String, DateTime, func as sql_func, Index, JSON
 from sqlalchemy.dialects.postgresql import JSONB
 
 from app.core.database import Base
@@ -12,7 +12,7 @@ class WorkflowDefinitionDB(Base):
     workflow_id_api = Column(String, unique=True, index=True, nullable=False) # API-facing ID
     name = Column(String, index=True, nullable=False)
     wallet_address = Column(String, index=True, nullable=False) # Creator's wallet
-    definition = Column(JSONB, nullable=False) # Stores the WFWorkflowDefinition TypedDict
+    definition = Column(JSON,nullable=False) # Stores the WFWorkflowDefinition TypedDict
     created_at = Column(DateTime(timezone=True), server_default=sql_func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=sql_func.now())
 

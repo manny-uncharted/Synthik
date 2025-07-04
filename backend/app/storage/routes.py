@@ -13,10 +13,10 @@ from sqlalchemy.orm import Session
 
 from app.storage.akave import AkaveLinkAPI
 from app.core.database import get_session
-from app.campaigns.models import Campaign, Contribution
+from app.dataset.models import Dataset
 
 router = APIRouter(
-    prefix="/walrus",
+    prefix="/storage",
     tags=["Storage"],
 )
 
@@ -40,12 +40,12 @@ def _remove_temp_directory(temp_dir_path: str):
 @router.post("/upload")
 async def upload_file_to_walrus(
     file: UploadFile = File(...),
-    onchain_campaign_id: Optional[str] = Query(None, description="Name of the bucket"),
+    dataset_id: Optional[str] = Query(None, description="Name of the bucket"),
 ):
     """
     Uploads a file to storage via AkaveLinkAPI.
     """
-    if not onchain_campaign_id:
+    if not dataset_id:
         raise HTTPException(status_code=400, detail="onchain_campaign_id query parameter is required.")
 
     try:
@@ -58,7 +58,7 @@ async def upload_file_to_walrus(
 
         # synchronous upload
         response = akave.upload_file(
-            bucket_name=onchain_campaign_id,
+            bucket_name=dataset_id,
             file_path=tmp_path,
         )
 
@@ -74,39 +74,28 @@ async def upload_file_to_walrus(
 async def download_file_from_walrus(
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_session),
-    onchain_campaign_id: Optional[str] = None,
-    onchain_contribution_id: Optional[str] = None,
+    dataset_id: Optional[str] = None,
+    blob_id: Optional[str] = None,
 ) -> FileResponse:
     """
     Downloads a file via AkaveLinkAPI and streams it to the client.
     """
-    if not onchain_campaign_id or not onchain_contribution_id:
+    if not dataset_id or not blob_id:
         raise HTTPException(status_code=400, detail="Missing required query parameters.")
 
     # fetch campaign and contribution metadata
-    campaign = db.query(Campaign).filter(Campaign.onchain_campaign_id == onchain_campaign_id).first()
-    if not campaign:
-        raise HTTPException(status_code=404, detail="Campaign not found.")
-
-    contribution = (
-        db.query(Contribution)
-        .filter(
-            Contribution.campaign_id == campaign.id,
-            Contribution.onchain_contribution_id == onchain_contribution_id,
-        )
-        .first()
-    )
-    if not contribution or not contribution.data_url:
-        raise HTTPException(status_code=404, detail="Contribution or data_url not found.")
+    dataset = db.query(Dataset).filter(Dataset.id == dataset_id).first()
+    if not dataset:
+        raise HTTPException(status_code=404, detail="Dataset not found.")
 
     # derive blob_id and filename
-    blob_id = Path(contribution.data_url).name
+    blob_id = Path(dataset.data_url).name
     ext = ''
-    if contribution.file_type:
-        if contribution.file_type.startswith('.'):
-            ext = contribution.file_type
+    if dataset.file_type:
+        if dataset.file_type.startswith('.'):
+            ext = dataset.file_type
         else:
-            guessed = mimetypes.guess_extension(contribution.file_type)
+            guessed = mimetypes.guess_extension(dataset.file_type)
             ext = guessed or ''
 
     base, _ = os.path.splitext(blob_id)
@@ -119,7 +108,7 @@ async def download_file_from_walrus(
     try:
         akave = AkaveLinkAPI()
         output_path = akave.download_file(
-            bucket_name=onchain_campaign_id,
+            bucket_name=dataset_id,
             file_name=blob_id,
             output_dir=temp_dir,
         )

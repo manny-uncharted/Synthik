@@ -17,9 +17,9 @@ import aiobotocore.session
 from google.cloud import storage
 from google.oauth2 import service_account
 
-# --- Application Specific Imports ---
-from app.ai_training.models import ProcessedDataset # SQLAlchemy model
+
 from app.core.enums.ai_training import StorageType
+from app.dataset.models import Dataset
 # from app.core.config import settings
 
 
@@ -89,7 +89,7 @@ async def _download_gcs_dataset_content(
 
 
 async def prepare_dataset_for_local_training(
-    dataset: ProcessedDataset, # The SQLAlchemy ORM model instance
+    dataset: Dataset,
     target_input_data_dir: str, # The job's specific input_data/ directory
     job_id: str # For logging and unique temp file naming
 ) -> bool:

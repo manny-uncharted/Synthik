@@ -1,6 +1,4 @@
 from contextlib import asynccontextmanager
-
-import aioredis
 from redis.asyncio import Redis as AsyncRedis
 import json
 from typing import Optional, Any
@@ -47,7 +45,7 @@ async def get_redis_session(redis_pool: AsyncRedis):
 
 class RedisCache:
     def __init__(self, url: str = REDIS_URL):
-        self.redis = aioredis.from_url(url, encoding="utf8", decode_responses=True)
+        self.redis = AsyncRedis.from_url(url, encoding="utf8", decode_responses=True)
 
     async def get(self, key: str) -> Optional[Any]:
         data = await self.redis.get(key)

@@ -2,12 +2,13 @@ import uuid
 import logging
 from datetime import datetime
 from typing import Optional
-from sqlalchemy import Column, String, Text, DateTime, JSON as SQLJSON, func as sql_func, ForeignKey, Index, Enum as SQLEnum, Float, Integer
+from sqlalchemy import Column, String, Text, DateTime, JSON, func as sql_func, ForeignKey, Index, Enum as SQLEnum, Float, Integer
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
+from app.core.types import StringArray
 from app.core.enums.ai_training import StorageType, TrainingPlatform, JobStatus, ModelStorageType
 from app.ai_training.utils.security import fernet_cipher
 
@@ -25,7 +26,7 @@ class UserExternalServiceCredential(Base):
     credential_name = Column(String, nullable=False)
     encrypted_api_key = Column(Text, nullable=True)
     encrypted_secret_key = Column(Text, nullable=True)
-    additional_config = Column(JSONB, nullable=True)
+    additional_config = Column(JSON,nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=sql_func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=sql_func.now(), server_default=sql_func.now())
     __table_args__ = (Index("uix_user_platform_credname", "user_wallet_address", "platform", "credential_name", unique=True),)
@@ -53,17 +54,15 @@ class AITrainingJob(Base):
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     job_name = Column(String, index=True, nullable=False)
     user_wallet_address = Column(String, index=True, nullable=False)
-    processed_dataset_id = Column(String, ForeignKey("processed_datasets.id"), nullable=False)
-    processed_dataset = relationship("ProcessedDataset", back_populates="training_jobs")
     platform = Column(SQLEnum(TrainingPlatform), nullable=False)
     user_credential_id = Column(String, ForeignKey("user_external_service_credentials.id"), nullable=True)
     user_credential = relationship("UserExternalServiceCredential", back_populates="training_jobs")
     model_type = Column(String, nullable=True)
-    hyperparameters = Column(JSONB, nullable=True)
-    training_script_config = Column(JSONB, nullable=True)
+    hyperparameters = Column(JSON,nullable=True)
+    training_script_config = Column(JSON,nullable=True)
     status = Column(SQLEnum(JobStatus), default=JobStatus.PENDING, nullable=False, index=True)
     external_job_id = Column(String, nullable=True, index=True)
-    metrics = Column(JSONB, nullable=True)
+    metrics = Column(JSON,nullable=True)
     output_model_storage_type = Column(SQLEnum(ModelStorageType), nullable=True)
     output_model_url = Column(String, nullable=True)
     huggingface_model_url = Column(String, nullable=True, index=True)
@@ -91,14 +90,14 @@ class Model(Base):
     accuracy: float = Column(Float, default=0.0)
     downloads: int = Column(Integer, default=0)
     stars: int = Column(Integer, default=0)
-    tags = Column(ARRAY(String), default=[])
+    tags = Column(StringArray, default=list, nullable=False)
     filecoin_cid: str = Column(String, nullable=True)
     status: str = Column(
-        Enum("training", "ready", "failed", "deprecated", name="model_status"),
+        SQLEnum("training", "ready", "failed", "deprecated", name="model_status"),
         default="training",
     )
-    metrics = Column(JSONB, default={})
-    training_config = Column(JSONB, default={})
+    metrics = Column(JSON,default={})
+    training_config = Column(JSON,default={})
     created_at: datetime = Column(DateTime, default=datetime.utcnow)
     updated_at: datetime = Column(
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow

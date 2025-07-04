@@ -49,3 +49,14 @@ services:
     environment:
       NODE_ADDRESS: "connect.akave.ai:5500"    # Public node address as per Akave docs
       PRIVATE_KEY: "${AKAVE_PRIVATE_KEY}"       # Use an environment variable or directly assign your private key
+
+  inngest:
+    image: inngest/inngest:latest
+    command: >
+      dev
+      -u http://web:8000/api/inngest
+      --no-discovery
+    ports:
+      - "8288:8288"
+    depends_on:
+      - web

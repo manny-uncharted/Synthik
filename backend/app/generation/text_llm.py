@@ -1,6 +1,7 @@
 # synthetic_tools/text_llm.py
 
 import os
+import json
 import asyncio
 from typing import Optional, Union, Type
 from pydantic import BaseModel, Field, conint
@@ -10,6 +11,8 @@ from app.ai_agents.enterprise_workflow import AtomaLangChainWrapper
 from app.ai_verification.utils import LilypadLLMWrapper
 from langchain_core.runnables import Runnable
 from app.core.logger import logger
+
+from langchain_core.tools import tool, BaseTool
 
 
 class TextGenInput(BaseModel):
@@ -108,8 +111,8 @@ def get_text_llm(
 
 
 class SyntheticTextGenerationTool(BaseTool):
-    name = "generate_synthetic_text"
-    description = "Generate multiple text samples using a chat‐style LLM."
+    name: str = "generate_synthetic_text"
+    description: str = "Generate multiple text samples using a chat‐style LLM."
 
     args_schema: Type[BaseModel] = TextGenInput
 
@@ -119,7 +122,7 @@ class SyntheticTextGenerationTool(BaseTool):
         for i in range(num_samples):
             logger.info(f"[TextGen] Generating sample {i+1}/{num_samples}")
             # assume llm.ainvoke returns the generated text
-            response = await llm.ainvoke({"prompt": prompt, "max_length": max_length})
+            response = await llm.ainvoke(prompt)
             # response might be BaseMessage or str
             text = response.content if hasattr(response, "content") else str(response)
             samples.append(text.strip())

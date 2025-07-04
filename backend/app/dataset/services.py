@@ -7,7 +7,7 @@ from app.core.exceptions import NotFoundError, ValidationError
 from app.core.logger import logger
 
 def create_dataset(db: Session, data: DatasetCreate, creator_id: str) -> Dataset:
-    ds = Dataset(**data.dict(), creator_id=creator_id)
+    ds = Dataset(**data.model_dump(), creator_id=creator_id)
     db.add(ds)
     db.commit()
     db.refresh(ds)

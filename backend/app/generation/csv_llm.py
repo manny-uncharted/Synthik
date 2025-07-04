@@ -7,13 +7,11 @@ import random
 import csv
 from datetime import datetime, timedelta
 from typing import List, Optional, Any, Type, Dict
-from pydantic import BaseModel, Field, validator, root_validator
+from pydantic import BaseModel, Field, validator, model_validator
 from langchain_core.tools import BaseTool
 from uuid import uuid4
 
-from app.generation.synthetic_generation_tools import (
-    SyntheticImageGenerationTool,
-)
+from app.generation.image_llm import SyntheticImageGenerationTool
 from app.generation.text_llm import SyntheticTextGenerationTool
 from app.core.logger import logger
 
@@ -45,7 +43,7 @@ class ColumnSpec(BaseModel):
             raise ValueError(f"type must be one of {allowed}")
         return v
 
-    @root_validator
+    @model_validator(mode="before")
     def check_required_fields(cls, values):
         t = values.get("type")
         if t in {"text", "image"} and not values.get("prompt"):
@@ -71,8 +69,8 @@ class CSVSchema(BaseModel):
 
 
 class SyntheticCSVGenerationTool(BaseTool):
-    name = "generate_synthetic_csv"
-    description = (
+    name: str = "generate_synthetic_csv"
+    description: str = (
         "Generate a CSV with arbitrary schema: text, image, number, date or categorical columns."
     )
     args_schema: Type[BaseModel] = CSVSchema
@@ -84,8 +82,11 @@ class SyntheticCSVGenerationTool(BaseTool):
         output_path: str,
         image_delay_seconds: float = 1.0,
     ) -> str:
-        schema = [ColumnSpec(**col) for col in columns]
-
+        schema = [
+            col if isinstance(col, ColumnSpec)
+            else ColumnSpec(**col)
+            for col in columns
+        ]
         # Prepare per-column buffers
         data: List[dict] = [ {} for _ in range(rows) ]
 

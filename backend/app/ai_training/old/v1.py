@@ -221,7 +221,7 @@ class ProcessedDatasetResponse(ProcessedDatasetCreate):
     created_at: datetime
     updated_at: Optional[datetime] = None
     class Config:
-        orm_mode = True
+        from_attributes = True
         use_enum_values = True # Ensure enums are serialized as their values
 
 class UserExternalServiceCredentialCreate(BaseModel):
@@ -244,7 +244,7 @@ class UserExternalServiceCredentialResponse(BaseModel):
     created_at: datetime
     updated_at: Optional[datetime] = None
     class Config:
-        orm_mode = True
+        from_attributes = True
         use_enum_values = True
 
 class AITrainingJobCreate(BaseModel):
@@ -285,7 +285,7 @@ class AITrainingJobResponse(BaseModel):
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
     class Config:
-        orm_mode = True
+        from_attributes = True
         use_enum_values = True
 
 class TrainingJobStatusUpdate(BaseModel):

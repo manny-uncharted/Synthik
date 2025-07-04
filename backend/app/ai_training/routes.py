@@ -27,7 +27,7 @@ from app.core.logger import logger
 from app.core.redis import get_redis_ml_ops, get_redis_pool
 from app.core.database import get_session, get_session_with_ctx_manager
 from app.core.constants import MLOPS_ENCRYPTION_KEY, FASTAPI_BASE_URL_CAMPAIGN_API, HUGGING_FACE_HUB_TOKEN_MLOPS, AWS_ACCESS_KEY_ID_MLOPS, AWS_SECRET_ACCESS_KEY_MLOPS, AWS_REGION_MLOPS, WEBHOOK_SHARED_SECRET
-from app.ai_training.models import ProcessedDataset, UserExternalServiceCredential, TrainingPlatform, AITrainingJob
+from app.ai_training.models import UserExternalServiceCredential, TrainingPlatform, AITrainingJob
 from app.core.enums.ai_training import StorageType, JobStatus, TrainingPlatform
 from app.ai_training.schemas import (
     UserExternalServiceCredentialCreate, 
@@ -47,7 +47,7 @@ from app.ai_training.services import (
     get_model, 
     list_models
 )
-from app.campaigns.models import Campaign, Contribution
+from app.core.database import get_db
 from app.storage.walrus import WalrusClient
 
 try:
@@ -77,32 +77,6 @@ WALRUS_PUBLISHER_BLOB_URL_PREFIX = "https://publisher.walrus-testnet.walrus.spac
 ml_ops_router = APIRouter(prefix="/mlops", tags=["AI/ML Operations"])
 
 
-@ml_ops_router.post(
-    "/models",
-    response_model=dict,
-    status_code=status.HTTP_201_CREATED,
-)
-async def train_new_model(
-    payload: ModelCreate,
-    db: Session = Depends(get_db),
-    current_user: str = Depends(...),
-):
-    """
-    Kick off a new model training job.
-    Returns the created Model plus a TrainingJobInfo.
-    """
-    model = create_model(db, payload, user_id=current_user)
-
-    # enqueue training
-    from tasks import train_model
-    async_result = train_model.delay(model.id)
-
-    job_info = TrainingJobInfo(
-        id=async_result.id, status="queued", estimatedTime=60.0
-    )
-    logger.info("models.enqueue", model_id=model.id, job_id=job_info.id)
-
-    return {"model": model, "trainingJob": job_info}
 
 @ml_ops_router.get("/models", response_model=ModelListResponse)
 async def read_models(

@@ -1,6 +1,6 @@
 import time
 from typing import List, Tuple
-
+from sqlalchemy.orm import Session
 
 from app.generation.schemas import PreviewConfig, Template, GenerationJobResponse
 from app.generation.models import GenerationJob

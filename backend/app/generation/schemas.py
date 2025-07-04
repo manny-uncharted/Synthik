@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, conint, constr
-from typing import List, Any, Dict, Optional
+from typing import List, Any, Dict, Optional, Literal
 from datetime import datetime
 
 
@@ -10,36 +10,42 @@ class Template(BaseModel):
     name: str
     description: str
     category: str
-    schema: List[SchemaField]
+    data_schema_field: List[SchemaField]
     previewData: List[Dict[str, Any]]
     useCases: List[str]
     estimatedRows: int
 
+
 class TemplatesResponse(BaseModel):
     templates: List[Template]
 
+
 class PreviewConfig(BaseModel):
-    schema: List[SchemaField]
+    data_schema_field: List[SchemaField]
     rows: conint(gt=0, le=50)
-    model: constr(min_length=1)
-    quality: constr(regex="^(fast|balanced|high)$")
+    model: str = Field(..., min_length=1)
+    # use Literal to constrain to exactly these three values
+    quality: Literal["fast", "balanced", "high"]  
+
 
 class PreviewRequest(BaseModel):
     config: PreviewConfig
 
+
 class PreviewResponse(BaseModel):
     preview: List[dict]
     generationTime: float  # seconds
-    estimatedCost: float   # in USD or ETH, depending on your billing
+    estimatedCost: float   # in USD or ETH, depending on billing
 
-    class Config:
-        schema_extra = {
+    model_config = {
+        "json_schema_extra": {
             "example": {
                 "preview": [{"field1": "value1", "field2": 123}],
                 "generationTime": 0.23,
                 "estimatedCost": 0.005
             }
         }
+    }
 
 
 class GenerationJobResponse(BaseModel):
@@ -55,6 +61,7 @@ class GenerationJobResponse(BaseModel):
     updatedAt: datetime = Field(..., alias="updated_at")
     completedAt: Optional[datetime] = Field(None, alias="completed_at")
 
+
     class Config:
-        orm_mode = True
-        allow_population_by_field_name = True
+        from_attributes = True
+        populate_by_name = True

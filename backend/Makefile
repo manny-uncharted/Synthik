@@ -2,6 +2,7 @@
 
 SHELL := /usr/bin/env bash
 export GOOGLE_APPLICATION_CREDENTIALS := $(PWD)/auth.json
+export GRPC_POLL_STRATEGY=poll
 
 .PHONY: install run clean ngrok
 

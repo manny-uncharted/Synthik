@@ -2,12 +2,49 @@ from pydantic import BaseModel, Field, conlist, constr
 from typing import List, Optional, Any
 from datetime import datetime
 
+class SchemaFieldConstraint(BaseModel):
+    required: Optional[bool] = False
+    unique: Optional[bool] = False
+    min: Optional[float]
+    max: Optional[float]
+    pattern: Optional[str]
+    enum: Optional[List[str]] = []
+
 class SchemaField(BaseModel):
     id: str
     name: str
     type: str
     description: Optional[str]
-    constraints: Optional[dict]
+    constraints: SchemaFieldConstraint
+
+class DatasetBase(BaseModel):
+    name: constr(min_length=1, max_length=255)
+    description: Optional[str] = None
+    category: Optional[str] = None
+    tags: List[str] = Field(default_factory=list)
+
+    # format must be one of json, csv, parquet
+    format: str = Field(
+        "csv", 
+        pattern=r"^(json|csv|parquet|png|jpg|jpeg|gif|webp)$",
+        description="Data format: json, csv, parquet, or png, jpg, jpeg, gif, webp"
+    )
+
+    data_schema_fields: List[SchemaField]
+
+    # visibility must be one of public, private, restricted
+    visibility: str = Field(
+        "public",
+        pattern=r"^(public|private|restricted)$",
+        description="Visibility: public, private, or restricted"
+    )
+
+    license: Optional[str] = None
+    price: float = Field(0.0, ge=0.0)
+    pricePerRow: float = Field(0.0, ge=0.0)
+
+    class Config:
+        from_attributes = True
 
 class GenerationLineage(BaseModel):
     model: Optional[str]
@@ -17,17 +54,7 @@ class GenerationLineage(BaseModel):
     quality: Optional[str]
     verification: Optional[bool]
 
-class DatasetBase(BaseModel):
-    name: constr(min_length=1, max_length=255)
-    description: Optional[str]
-    category: Optional[str]
-    tags: Optional[List[str]] = []
-    format: constr(regex="^(json|csv|parquet)$")
-    schema: List[SchemaField]
-    visibility: Optional[constr(regex="^(public|private|restricted)$")] = "public"
-    license: Optional[str]
-    price: float = 0.0
-    pricePerRow: float = 0.0
+
 
 class DatasetCreate(DatasetBase):
     pass  # all fields inherited
@@ -56,7 +83,7 @@ class DatasetResponse(DatasetBase):
     status: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class DatasetListResponse(BaseModel):
     datasets: List[DatasetResponse]

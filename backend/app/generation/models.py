@@ -7,6 +7,7 @@ from sqlalchemy import (
     DateTime,
     Enum,
     ForeignKey,
+    JSON
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from datetime import datetime
@@ -26,8 +27,8 @@ class GenerationJob(Base):
         nullable=False,
     )
     progress: int = Column(Integer, default=0, nullable=False)  # 0–100
-    config = Column(JSONB, nullable=False)   # store the PreviewConfig/dataset-gen config
-    result = Column(JSONB, default={}, nullable=False)
+    config = Column(JSON, nullable=False)   # store the PreviewConfig/dataset-gen config
+    result = Column(JSON, default={}, nullable=False)
     error: str = Column(Text, nullable=True)
     created_at: datetime = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at: datetime = Column(

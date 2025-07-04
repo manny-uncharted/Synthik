@@ -41,10 +41,10 @@ class CSVGenInput(BaseModel):
 
 
 class SyntheticImageGenerationTool(BaseTool):
-    name = "generate_synthetic_images"
-    description = (
+    name: str = "generate_synthetic_images"
+    description: str = (
         "Generate multiple images via Lilypad, saving each to disk. "
-        "Respects a delay between calls to avoid 429 rate‐limits."
+        "Respects a delay between calls to avoid 429 rate-limits."
     )
 
     args_schema: Type[BaseModel] = ImageGenInput

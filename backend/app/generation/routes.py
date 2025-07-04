@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 
 from app.core.database import get_db
-from app.generation.schemas import PreviewRequest, PreviewResponse, TemplatesResponse
+from app.generation.schemas import PreviewRequest, PreviewResponse, TemplatesResponse, GenerationJobResponse
 from app.generation.services import generate_preview, list_templates, get_generation_job
 from app.core.exceptions import ValidationError
 
