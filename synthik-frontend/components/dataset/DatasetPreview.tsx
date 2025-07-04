@@ -1,9 +1,16 @@
 import { motion } from 'framer-motion';
-import { Download, Copy, RefreshCw, Eye, Code } from 'lucide-react';
+import {
+  Download,
+  Copy,
+  RefreshCw,
+  Eye,
+  Code,
+  AlertCircle,
+} from 'lucide-react';
 import { useState } from 'react';
 
 interface PreviewData {
-  rows: any[];
+  rows: Record<string, string | number | boolean | Date | object>[];
   schema: {
     name: string;
     type: string;
@@ -16,7 +23,8 @@ interface DatasetPreviewProps {
   data: PreviewData | null;
   isGenerating: boolean;
   onRefresh: () => void;
-  onExport: (format: 'json' | 'csv') => void;
+  onExport: (format: 'json' | 'csv', exportFull?: boolean) => void;
+  generationProgress?: number;
 }
 
 export default function DatasetPreview({
@@ -24,22 +32,30 @@ export default function DatasetPreview({
   isGenerating,
   onRefresh,
   onExport,
+  generationProgress = 0,
 }: DatasetPreviewProps) {
   const [viewMode, setViewMode] = useState<'table' | 'json'>('table');
   const [copiedRow, setCopiedRow] = useState<number | null>(null);
+  const [showExportOptions, setShowExportOptions] = useState(false);
 
-  const copyToClipboard = (row: any, index: number) => {
+  const copyToClipboard = (
+    row: Record<string, string | number | boolean | Date | object>,
+    index: number
+  ) => {
     navigator.clipboard.writeText(JSON.stringify(row, null, 2));
     setCopiedRow(index);
     setTimeout(() => setCopiedRow(null), 2000);
   };
 
-  const formatValue = (value: any, type: string) => {
+  const formatValue = (
+    value: string | number | boolean | Date | object | null | undefined,
+    type: string
+  ) => {
     if (value === null || value === undefined) return '-';
 
     switch (type) {
       case 'date':
-        return new Date(value).toLocaleDateString();
+        return new Date(String(value)).toLocaleDateString();
       case 'boolean':
         return value ? '✓' : '✗';
       case 'json':
@@ -74,6 +90,21 @@ export default function DatasetPreview({
             <p className="text-sm text-gray-600">
               This may take a few moments depending on your configuration
             </p>
+            {generationProgress > 0 && (
+              <div className="mt-4">
+                <div className="w-64 h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <motion.div
+                    className="h-full bg-indigo-600"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${generationProgress}%` }}
+                    transition={{ duration: 0.3 }}
+                  />
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  {generationProgress}% complete
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Progress steps */}
@@ -113,8 +144,8 @@ export default function DatasetPreview({
             No Preview Available
           </h3>
           <p className="text-sm text-gray-600">
-            Configure your dataset and click &quot;Generate Preview&quot; to see sample
-            data
+            Configure your dataset and click &quot;Generate Preview&quot; to see
+            sample data
           </p>
         </div>
       </div>
@@ -245,34 +276,131 @@ export default function DatasetPreview({
         )}
       </div>
 
-      {/* Export Options */}
-      <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h4 className="font-semibold text-gray-900 mb-1">
-              Ready to export?
-            </h4>
-            <p className="text-sm text-gray-600">
-              Download the full dataset in your preferred format
+      {/* Notice about preview */}
+      {data.rows.length < data.totalRows && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+          <div className="text-sm">
+            <p className="font-medium text-amber-900 mb-1">
+              This is a preview of your dataset
+            </p>
+            <p className="text-amber-800">
+              You&apos;re viewing {data.rows.length} sample rows. The full
+              dataset contains {data.totalRows.toLocaleString()} rows. Use the
+              export options below to download either the preview or the
+              complete dataset.
             </p>
           </div>
-          <div className="flex items-center gap-3">
+        </div>
+      )}
+
+      {/* Export Options */}
+      <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h4 className="font-semibold text-gray-900 mb-1">Export Options</h4>
+            <p className="text-sm text-gray-600">
+              Choose to export the preview or generate the full dataset
+            </p>
+          </div>
+          <button
+            onClick={() => setShowExportOptions(!showExportOptions)}
+            className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
+          >
+            {showExportOptions ? 'Hide Options' : 'Show Options'}
+          </button>
+        </div>
+
+        {showExportOptions && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            className="space-y-4"
+          >
+            {/* Preview Export */}
+            <div className="bg-white rounded-lg p-4 border border-gray-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h5 className="font-medium text-gray-900 mb-1">
+                    Export Preview
+                  </h5>
+                  <p className="text-sm text-gray-600">
+                    Download only the {data.rows.length} preview rows (instant)
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => onExport('json', false)}
+                    className="px-3 py-1.5 bg-white border border-gray-200 rounded hover:border-gray-300 transition-colors flex items-center gap-1.5 text-sm font-medium"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    JSON
+                  </button>
+                  <button
+                    onClick={() => onExport('csv', false)}
+                    className="px-3 py-1.5 bg-white border border-gray-200 rounded hover:border-gray-300 transition-colors flex items-center gap-1.5 text-sm font-medium"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    CSV
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Full Dataset Export */}
+            <div className="bg-white rounded-lg p-4 border border-indigo-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h5 className="font-medium text-gray-900 mb-1">
+                    Export Full Dataset
+                  </h5>
+                  <p className="text-sm text-gray-600">
+                    Generate and download all {data.totalRows.toLocaleString()}{' '}
+                    rows
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    This will use API credits and may take a few minutes
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => onExport('json', true)}
+                    className="px-3 py-1.5 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors flex items-center gap-1.5 text-sm font-medium"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    JSON
+                  </button>
+                  <button
+                    onClick={() => onExport('csv', true)}
+                    className="px-3 py-1.5 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors flex items-center gap-1.5 text-sm font-medium"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    CSV
+                  </button>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {!showExportOptions && (
+          <div className="flex items-center justify-center gap-3">
             <button
-              onClick={() => onExport('json')}
+              onClick={() => onExport('json', false)}
               className="px-4 py-2 bg-white border border-gray-200 rounded-lg hover:border-gray-300 transition-colors flex items-center gap-2 text-sm font-medium"
             >
               <Download className="w-4 h-4" />
-              Export as JSON
+              Export Preview as JSON
             </button>
             <button
-              onClick={() => onExport('csv')}
+              onClick={() => onExport('csv', false)}
               className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2 text-sm font-medium"
             >
               <Download className="w-4 h-4" />
-              Export as CSV
+              Export Preview as CSV
             </button>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
