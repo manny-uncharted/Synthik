@@ -670,36 +670,6 @@ export default function DatasetDetails() {
             </div>
           </div>
 
-          {/* Use Cases Section */}
-          <div className="mb-12">
-            <h2 className="text-2xl font-semibold text-gray-900 mb-6 display-font">
-              Example Use Cases
-            </h2>
-            <div className="grid md:grid-cols-2 gap-6">
-              {mockDataset.useCases.map((useCase, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                  className="bg-white rounded-xl border border-gray-100 p-6 hover:shadow-lg hover:border-indigo-200 transition-all group"
-                >
-                  <div className="flex items-start gap-4">
-                    <div className="text-3xl">{useCase.icon}</div>
-                    <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2 group-hover:text-indigo-600 transition-colors">
-                        {useCase.title}
-                      </h3>
-                      <p className="text-sm text-gray-600 leading-relaxed">
-                        {useCase.description}
-                      </p>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </div>
-
           {/* Related Datasets */}
           <div className="bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 rounded-2xl p-8">
             <div className="flex items-center justify-between mb-6">

@@ -153,6 +153,8 @@ export default function CreateDatasetFlow({
     schema: { name: string; type: string }[];
     totalRows: number;
     generationTime: number;
+    tokensUsed: number;
+    cost: number;
   } | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
@@ -276,6 +278,8 @@ export default function CreateDatasetFlow({
           schema: config.schema.map((f) => ({ name: f.name, type: f.type })),
           totalRows: transformedData.length,
           generationTime: 0.1,
+          tokensUsed: 0,
+          cost: 0,
         });
       } else {
         setGenerationError('Please apply transformations first');
@@ -301,14 +305,14 @@ export default function CreateDatasetFlow({
       }
 
       // Generate preview data
-      const previewRows = await datasetGenerationService.generatePreview(
+      const previewResponse = await datasetGenerationService.generatePreview(
         config,
         model
       );
 
       // Validate the generated data
       const validation = datasetGenerationService.validateData(
-        previewRows,
+        previewResponse.data,
         config.schema
       );
       if (!validation.valid) {
@@ -316,7 +320,7 @@ export default function CreateDatasetFlow({
       }
 
       setPreviewData({
-        rows: previewRows.map((row) => {
+        rows: previewResponse.data.map((row) => {
           const cleanRow: Record<
             string,
             string | number | boolean | Date | object
@@ -333,7 +337,9 @@ export default function CreateDatasetFlow({
         }),
         schema: config.schema.map((f) => ({ name: f.name, type: f.type })),
         totalRows: config.rows,
-        generationTime: 2.3, // This would come from the actual generation
+        generationTime: previewResponse.metadata.generationTime,
+        tokensUsed: previewResponse.metadata.tokensUsed,
+        cost: previewResponse.metadata.cost,
       });
     } catch (error) {
       console.error('Generation error:', error);
@@ -343,6 +349,86 @@ export default function CreateDatasetFlow({
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  const handleGenerateFullDataset = async () => {
+    if (!previewData) {
+      throw new Error('No preview data available');
+    }
+
+    // For transformation type, return all transformed data
+    if (config.datasetType === 'transformation') {
+      if (transformedData) {
+        return {
+          rows: transformedData.map((row) => {
+            const cleanRow: Record<
+              string,
+              string | number | boolean | Date | object
+            > = {};
+            Object.entries(row).forEach(([key, value]) => {
+              if (value !== null) {
+                cleanRow[key] = value;
+              } else {
+                cleanRow[key] = '';
+              }
+            });
+            return cleanRow;
+          }),
+          schema: config.schema.map((f) => ({ name: f.name, type: f.type })),
+          totalRows: transformedData.length,
+          generationTime: 0.1,
+          tokensUsed: 0,
+          cost: 0,
+        };
+      } else {
+        throw new Error('No transformed data available');
+      }
+    }
+
+    // For generation types, generate full dataset
+    const model = getModelById(selectedModel);
+    if (!model) {
+      throw new Error('Please select a model');
+    }
+
+    console.log('Starting full dataset generation...');
+
+    // Use the dataset generation service directly
+    const generator = datasetGenerationService;
+    const request = {
+      model,
+      config,
+      streamCallback: (progress: number) => {
+        console.log(`Full generation progress: ${progress}%`);
+        setGenerationProgress(progress);
+      },
+    };
+
+    // Generate the full dataset
+    const response = await generator.generateDataset(request);
+    console.log(`Full dataset generated: ${response.data.length} rows`);
+
+    return {
+      rows: response.data.map((row) => {
+        const cleanRow: Record<
+          string,
+          string | number | boolean | Date | object
+        > = {};
+        Object.entries(row).forEach(([key, value]) => {
+          if (value !== null) {
+            cleanRow[key] = value;
+          } else {
+            cleanRow[key] = '';
+          }
+        });
+        return cleanRow;
+      }),
+      schema: config.schema.map((f) => ({ name: f.name, type: f.type })),
+      totalRows: response.metadata.totalRows,
+      generationTime: response.metadata.generationTime,
+      tokensUsed: response.metadata.tokensUsed,
+      cost: response.metadata.cost,
+    };
   };
 
   const handleExport = async (
@@ -384,36 +470,32 @@ export default function CreateDatasetFlow({
           setGenerationProgress(0);
 
           try {
-            const model = getModelById(selectedModel);
-            if (!model) {
-              throw new Error('Please select a model');
-            }
+            const fullDataset = await handleGenerateFullDataset();
 
-            console.log('Starting full dataset generation for export...');
-
-            // Use the dataset generation service directly
-            const generator = datasetGenerationService;
-            const request = {
-              model,
-              config,
-              streamCallback: (progress: number) => {
-                console.log(`Export generation progress: ${progress}%`);
-                setGenerationProgress(progress);
-              },
-            };
-
-            // Generate the full dataset
-            const response = await generator.generateDataset(request);
-            console.log(`Full dataset generated: ${response.data.length} rows`);
-
-            dataToExport = response.data;
+            dataToExport = fullDataset.rows.map((row) => {
+              const dataRecord: DataRecord = {};
+              Object.entries(row).forEach(([key, value]) => {
+                // Convert object types back to null or appropriate values
+                if (typeof value === 'object' && !(value instanceof Date)) {
+                  dataRecord[key] = JSON.stringify(value);
+                } else {
+                  dataRecord[key] = value as
+                    | string
+                    | number
+                    | boolean
+                    | Date
+                    | null;
+                }
+              });
+              return dataRecord;
+            });
             filename = `${config.name || 'dataset'}_full.${format}`;
 
             // Update preview data with full dataset info
             setPreviewData({
               ...previewData,
-              totalRows: response.metadata.totalRows,
-              generationTime: response.metadata.generationTime,
+              totalRows: fullDataset.totalRows,
+              generationTime: fullDataset.generationTime,
             });
           } catch (error) {
             console.error('Full generation error:', error);
@@ -926,7 +1008,22 @@ export default function CreateDatasetFlow({
                   isGenerating={isGenerating}
                   onRefresh={generatePreview}
                   onExport={handleExport}
+                  onGenerateFullDataset={handleGenerateFullDataset}
                   generationProgress={generationProgress}
+                  config={{
+                    name: config.name,
+                    description: config.description,
+                    schema: config.schema.map((field) => ({
+                      name: field.name,
+                      type: field.type,
+                      description: field.description,
+                    })),
+                    format: config.format,
+                    license: config.license,
+                    visibility: config.visibility,
+                    rows: config.rows,
+                    quality: config.quality,
+                  }}
                 />
               )}
             </motion.div>

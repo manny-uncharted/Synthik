@@ -6,6 +6,10 @@ import {
   Eye,
   Code,
   AlertCircle,
+  ArrowRight,
+  CheckCircle,
+  Zap,
+  Database,
 } from 'lucide-react';
 import { useState } from 'react';
 import FilecoinPublisher from './FilecoinPublisher';
@@ -19,15 +23,29 @@ interface PreviewData {
   }[];
   totalRows: number;
   generationTime: number;
+  tokensUsed?: number;
+  cost?: number;
+}
+
+interface FullDatasetData {
+  rows: Record<string, string | number | boolean | Date | object>[];
+  schema: {
+    name: string;
+    type: string;
+  }[];
+  totalRows: number;
+  generationTime: number;
+  tokensUsed?: number;
+  cost?: number;
 }
 
 // Storage interfaces for Filecoin publishing
 interface StorageEstimate {
-  proofsetFee: number; // 5 USDFC
-  storageFee: number; // Based on data size
-  bufferAmount: number; // 5 USDFC
+  proofsetFee: number;
+  storageFee: number;
+  bufferAmount: number;
   totalCost: number;
-  isFirstTime: boolean; // Whether user needs to create proofset
+  isFirstTime: boolean;
 }
 
 interface PublishProgress {
@@ -49,9 +67,11 @@ interface PublishProgress {
 
 interface PublishResult {
   metadataCID: string;
-  dataCID: string;
+  previewDataCID?: string;
+  fullDataCID?: string;
   transactionHash?: string;
   timestamp: number;
+  usingCDN?: boolean;
 }
 
 interface DatasetPreviewProps {
@@ -59,6 +79,7 @@ interface DatasetPreviewProps {
   isGenerating: boolean;
   onRefresh: () => void;
   onExport: (format: 'json' | 'csv', exportFull?: boolean) => void;
+  onGenerateFullDataset: () => Promise<FullDatasetData>;
   generationProgress?: number;
   // Dataset configuration for publishing
   config?: {
@@ -78,12 +99,20 @@ export default function DatasetPreview({
   isGenerating,
   onRefresh,
   onExport,
+  onGenerateFullDataset,
   generationProgress = 0,
   config,
 }: DatasetPreviewProps) {
   const [viewMode, setViewMode] = useState<'table' | 'json'>('table');
   const [copiedRow, setCopiedRow] = useState<number | null>(null);
-  const [showExportOptions, setShowExportOptions] = useState(false);
+  const [currentStep, setCurrentStep] = useState<
+    'preview' | 'generate' | 'publish'
+  >('preview');
+
+  // Full dataset state
+  const [fullDataset, setFullDataset] = useState<FullDatasetData | null>(null);
+  const [isGeneratingFull, setIsGeneratingFull] = useState(false);
+  const [fullGenerationProgress, setFullGenerationProgress] = useState(0);
 
   // Publishing state
   const [publishProgress, setPublishProgress] = useState<PublishProgress>({
@@ -148,6 +177,24 @@ export default function DatasetPreview({
         );
       default:
         return String(value);
+    }
+  };
+
+  const handleGenerateFullDataset = async () => {
+    setIsGeneratingFull(true);
+    setFullGenerationProgress(0);
+    setCurrentStep('generate');
+
+    try {
+      const result = await onGenerateFullDataset();
+      setFullDataset(result);
+      setCurrentStep('publish');
+    } catch (error) {
+      console.error('Failed to generate full dataset:', error);
+      setCurrentStep('preview');
+    } finally {
+      setIsGeneratingFull(false);
+      setFullGenerationProgress(0);
     }
   };
 
@@ -235,269 +282,437 @@ export default function DatasetPreview({
   }
 
   return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900">
-            Dataset Preview
-          </h3>
-          <p className="text-sm text-gray-600">
-            Showing {data.rows.length} of {data.totalRows} rows • Generated in{' '}
-            {data.generationTime}s
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {/* View mode toggle */}
-          <div className="flex items-center bg-gray-100 rounded-lg p-1">
-            <button
-              onClick={() => setViewMode('table')}
-              className={`px-3 py-1.5 text-sm font-medium rounded transition-colors ${
-                viewMode === 'table'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
+    <div className="space-y-6">
+      {/* Progress Steps */}
+      <div className="flex items-center justify-center">
+        <div className="flex items-center space-x-8">
+          {/* Preview Step */}
+          <div className="flex items-center">
+            <div
+              className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                currentStep === 'preview'
+                  ? 'bg-indigo-600 text-white'
+                  : ['generate', 'publish'].includes(currentStep)
+                  ? 'bg-green-600 text-white'
+                  : 'bg-gray-300 text-gray-600'
               }`}
             >
-              <Eye className="w-4 h-4 inline mr-1" />
-              Table
-            </button>
-            <button
-              onClick={() => setViewMode('json')}
-              className={`px-3 py-1.5 text-sm font-medium rounded transition-colors ${
-                viewMode === 'json'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
+              {['generate', 'publish'].includes(currentStep) ? (
+                <CheckCircle className="w-5 h-5" />
+              ) : (
+                <Eye className="w-5 h-5" />
+              )}
+            </div>
+            <span
+              className={`ml-2 text-sm font-medium ${
+                currentStep === 'preview'
+                  ? 'text-indigo-600'
+                  : ['generate', 'publish'].includes(currentStep)
+                  ? 'text-green-600'
+                  : 'text-gray-500'
               }`}
             >
-              <Code className="w-4 h-4 inline mr-1" />
-              JSON
-            </button>
+              Preview
+            </span>
           </div>
 
-          <button
-            onClick={onRefresh}
-            className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <RefreshCw className="w-4 h-4" />
-          </button>
+          <ArrowRight className="w-5 h-5 text-gray-400" />
+
+          {/* Generate Step */}
+          <div className="flex items-center">
+            <div
+              className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                currentStep === 'generate'
+                  ? 'bg-indigo-600 text-white'
+                  : currentStep === 'publish'
+                  ? 'bg-green-600 text-white'
+                  : 'bg-gray-300 text-gray-600'
+              }`}
+            >
+              {currentStep === 'publish' ? (
+                <CheckCircle className="w-5 h-5" />
+              ) : (
+                <Database className="w-5 h-5" />
+              )}
+            </div>
+            <span
+              className={`ml-2 text-sm font-medium ${
+                currentStep === 'generate'
+                  ? 'text-indigo-600'
+                  : currentStep === 'publish'
+                  ? 'text-green-600'
+                  : 'text-gray-500'
+              }`}
+            >
+              Full Dataset
+            </span>
+          </div>
+
+          <ArrowRight className="w-5 h-5 text-gray-400" />
+
+          {/* Publish Step */}
+          <div className="flex items-center">
+            <div
+              className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                currentStep === 'publish'
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-gray-300 text-gray-600'
+              }`}
+            >
+              <Zap className="w-5 h-5" />
+            </div>
+            <span
+              className={`ml-2 text-sm font-medium ${
+                currentStep === 'publish' ? 'text-indigo-600' : 'text-gray-500'
+              }`}
+            >
+              Publish
+            </span>
+          </div>
         </div>
       </div>
 
-      {/* Preview Content */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        {viewMode === 'table' ? (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    #
-                  </th>
-                  {data.schema.map((field, index) => (
-                    <th
-                      key={index}
-                      className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      {field.name}
-                      <span className="ml-1 text-gray-400 lowercase">
-                        ({field.type})
-                      </span>
-                    </th>
-                  ))}
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {data.rows.map((row, rowIndex) => (
-                  <motion.tr
-                    key={rowIndex}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: rowIndex * 0.05 }}
-                    className="hover:bg-gray-50 transition-colors"
-                  >
-                    <td className="px-4 py-3 text-sm text-gray-500">
-                      {rowIndex + 1}
-                    </td>
-                    {data.schema.map((field, fieldIndex) => (
-                      <td
-                        key={fieldIndex}
-                        className="px-4 py-3 text-sm text-gray-900"
-                      >
-                        {formatValue(row[field.name], field.type)}
-                      </td>
-                    ))}
-                    <td className="px-4 py-3 text-right">
-                      <button
-                        onClick={() => copyToClipboard(row, rowIndex)}
-                        className="text-gray-400 hover:text-gray-600 transition-colors"
-                      >
-                        {copiedRow === rowIndex ? (
-                          <span className="text-green-600 text-xs">
-                            Copied!
+      {/* Step Content */}
+      {currentStep === 'preview' && (
+        <div className="space-y-4">
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">
+                Dataset Preview
+              </h3>
+              <p className="text-sm text-gray-600">
+                Showing {data.rows.length} of {data.totalRows} rows • Generated
+                in {data.generationTime}s
+                {data.tokensUsed && (
+                  <>
+                    {' '}
+                    • {data.tokensUsed.toLocaleString()} tokens used
+                    {data.cost && data.cost > 0 && (
+                      <> • ${data.cost.toFixed(4)} cost</>
+                    )}
+                  </>
+                )}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {/* View mode toggle */}
+              <div className="flex items-center bg-gray-100 rounded-lg p-1">
+                <button
+                  onClick={() => setViewMode('table')}
+                  className={`px-3 py-1.5 text-sm font-medium rounded transition-colors ${
+                    viewMode === 'table'
+                      ? 'bg-white text-gray-900 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  <Eye className="w-4 h-4 inline mr-1" />
+                  Table
+                </button>
+                <button
+                  onClick={() => setViewMode('json')}
+                  className={`px-3 py-1.5 text-sm font-medium rounded transition-colors ${
+                    viewMode === 'json'
+                      ? 'bg-white text-gray-900 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  <Code className="w-4 h-4 inline mr-1" />
+                  JSON
+                </button>
+              </div>
+
+              <button
+                onClick={onRefresh}
+                className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <RefreshCw className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* Preview Content */}
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            {viewMode === 'table' ? (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        #
+                      </th>
+                      {data.schema.map((field, index) => (
+                        <th
+                          key={index}
+                          className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
+                          {field.name}
+                          <span className="ml-1 text-gray-400 lowercase">
+                            ({field.type})
                           </span>
-                        ) : (
-                          <Copy className="w-4 h-4" />
-                        )}
-                      </button>
-                    </td>
-                  </motion.tr>
-                ))}
-              </tbody>
-            </table>
+                        </th>
+                      ))}
+                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {data.rows.map((row, rowIndex) => (
+                      <motion.tr
+                        key={rowIndex}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: rowIndex * 0.05 }}
+                        className="hover:bg-gray-50 transition-colors"
+                      >
+                        <td className="px-4 py-3 text-sm text-gray-500">
+                          {rowIndex + 1}
+                        </td>
+                        {data.schema.map((field, fieldIndex) => (
+                          <td
+                            key={fieldIndex}
+                            className="px-4 py-3 text-sm text-gray-900"
+                          >
+                            {formatValue(row[field.name], field.type)}
+                          </td>
+                        ))}
+                        <td className="px-4 py-3 text-right">
+                          <button
+                            onClick={() => copyToClipboard(row, rowIndex)}
+                            className="text-gray-400 hover:text-gray-600 transition-colors"
+                          >
+                            {copiedRow === rowIndex ? (
+                              <span className="text-green-600 text-xs">
+                                Copied!
+                              </span>
+                            ) : (
+                              <Copy className="w-4 h-4" />
+                            )}
+                          </button>
+                        </td>
+                      </motion.tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="p-6">
+                <pre className="text-sm text-gray-800 overflow-x-auto">
+                  <code>{JSON.stringify(data.rows, null, 2)}</code>
+                </pre>
+              </div>
+            )}
           </div>
-        ) : (
-          <div className="p-6">
-            <pre className="text-sm text-gray-800 overflow-x-auto">
-              <code>{JSON.stringify(data.rows, null, 2)}</code>
-            </pre>
-          </div>
-        )}
-      </div>
 
-      {/* Notice about preview */}
-      {data.rows.length < data.totalRows && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-          <div className="text-sm">
-            <p className="font-medium text-amber-900 mb-1">
-              This is a preview of your dataset
-            </p>
-            <p className="text-amber-800">
-              You&apos;re viewing {data.rows.length} sample rows. The full
-              dataset contains {data.totalRows.toLocaleString()} rows. Use the
-              export options below to download either the preview or the
-              complete dataset.
-            </p>
+          {/* Notice about preview */}
+          {data.rows.length < data.totalRows && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div className="text-sm">
+                <p className="font-medium text-amber-900 mb-1">
+                  This is a preview of your dataset
+                </p>
+                <p className="text-amber-800">
+                  You&apos;re viewing {data.rows.length} sample rows. The full
+                  dataset contains {data.totalRows.toLocaleString()} rows.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Action Buttons */}
+          <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="font-semibold text-gray-900 mb-1">Next Steps</h4>
+                <p className="text-sm text-gray-600">
+                  Export preview, generate full dataset, or publish to Filecoin
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-4 flex items-center gap-4">
+              {/* Quick Export Preview */}
+              <button
+                onClick={() => onExport('csv', false)}
+                className="px-4 py-2 bg-white border border-gray-200 rounded-lg hover:border-gray-300 transition-colors flex items-center gap-2 text-sm font-medium"
+              >
+                <Download className="w-4 h-4" />
+                Export Preview
+              </button>
+
+              {/* Generate Full Dataset */}
+              <button
+                onClick={handleGenerateFullDataset}
+                disabled={isGeneratingFull}
+                className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Database className="w-4 h-4" />
+                {isGeneratingFull ? 'Generating...' : 'Generate Full Dataset'}
+                <span className="text-xs opacity-75">
+                  ({data.totalRows.toLocaleString()} rows)
+                </span>
+              </button>
+
+              {/* Skip to Publish Preview */}
+              <button
+                onClick={() => setCurrentStep('publish')}
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2 text-sm font-medium"
+              >
+                <Zap className="w-4 h-4" />
+                Publish Preview
+              </button>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Publish to Filecoin Network Section */}
-      <FilecoinPublisher
-        data={data}
-        config={memoConfig}
-        publishProgress={publishProgress}
-        setPublishProgress={setPublishProgress}
-        storageEstimate={storageEstimate}
-        setStorageEstimate={setStorageEstimate}
-        publishResult={publishResult}
-        setPublishResult={setPublishResult}
-        showPublishOptions={showPublishOptions}
-        setShowPublishOptions={setShowPublishOptions}
-      />
+      {/* Full Dataset Generation Step */}
+      {currentStep === 'generate' && (
+        <div className="space-y-4">
+          {isGeneratingFull ? (
+            <div className="bg-white rounded-2xl border border-gray-200 p-12">
+              <div className="flex flex-col items-center justify-center space-y-6">
+                <div className="relative">
+                  <div className="w-24 h-24 border-4 border-gray-200 rounded-full"></div>
+                  <motion.div
+                    className="absolute inset-0 w-24 h-24 border-4 border-indigo-600 rounded-full border-t-transparent"
+                    animate={{ rotate: 360 }}
+                    transition={{
+                      duration: 1,
+                      repeat: Infinity,
+                      ease: 'linear',
+                    }}
+                  />
+                </div>
 
-      {/* Export Options */}
-      <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h4 className="font-semibold text-gray-900 mb-1">Export Options</h4>
-            <p className="text-sm text-gray-600">
-              Choose to export the preview or generate the full dataset
-            </p>
-          </div>
-          <button
-            onClick={() => setShowExportOptions(!showExportOptions)}
-            className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
-          >
-            {showExportOptions ? 'Hide Options' : 'Show Options'}
-          </button>
+                <div className="text-center">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    Generating Full Dataset...
+                  </h3>
+                  <p className="text-sm text-gray-600">
+                    Creating {data.totalRows.toLocaleString()} rows of synthetic
+                    data
+                  </p>
+                  {fullGenerationProgress > 0 && (
+                    <div className="mt-4">
+                      <div className="w-64 h-2 bg-gray-200 rounded-full overflow-hidden">
+                        <motion.div
+                          className="h-full bg-indigo-600"
+                          initial={{ width: 0 }}
+                          animate={{ width: `${fullGenerationProgress}%` }}
+                          transition={{ duration: 0.3 }}
+                        />
+                      </div>
+                      <p className="text-xs text-gray-500 mt-2">
+                        {fullGenerationProgress}% complete
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : fullDataset ? (
+            <div className="space-y-4">
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <div className="flex items-center gap-3">
+                  <CheckCircle className="w-5 h-5 text-green-600" />
+                  <div>
+                    <p className="font-medium text-green-900">
+                      Full Dataset Generated Successfully!
+                    </p>
+                    <p className="text-sm text-green-800">
+                      {fullDataset.totalRows.toLocaleString()} rows generated in{' '}
+                      {fullDataset.generationTime}s
+                      {fullDataset.tokensUsed && (
+                        <>
+                          {' '}
+                          • {fullDataset.tokensUsed.toLocaleString()} tokens
+                          used
+                          {fullDataset.cost && fullDataset.cost > 0 && (
+                            <> • ${fullDataset.cost.toFixed(4)} cost</>
+                          )}
+                        </>
+                      )}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={() => onExport('csv', true)}
+                  className="px-4 py-2 bg-white border border-gray-200 rounded-lg hover:border-gray-300 transition-colors flex items-center gap-2 text-sm font-medium"
+                >
+                  <Download className="w-4 h-4" />
+                  Export Full Dataset
+                </button>
+
+                <button
+                  onClick={() => setCurrentStep('publish')}
+                  className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2 text-sm font-medium"
+                >
+                  <Zap className="w-4 h-4" />
+                  Publish to Filecoin
+                </button>
+
+                <button
+                  onClick={() => setCurrentStep('preview')}
+                  className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm font-medium"
+                >
+                  Back to Preview
+                </button>
+              </div>
+            </div>
+          ) : null}
         </div>
+      )}
 
-        {showExportOptions && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            className="space-y-4"
-          >
-            {/* Preview Export */}
-            <div className="bg-white rounded-lg p-4 border border-gray-200">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h5 className="font-medium text-gray-900 mb-1">
-                    Export Preview
-                  </h5>
-                  <p className="text-sm text-gray-600">
-                    Download only the {data.rows.length} preview rows (instant)
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => onExport('json', false)}
-                    className="px-3 py-1.5 bg-white border border-gray-200 rounded hover:border-gray-300 transition-colors flex items-center gap-1.5 text-sm font-medium"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    JSON
-                  </button>
-                  <button
-                    onClick={() => onExport('csv', false)}
-                    className="px-3 py-1.5 bg-white border border-gray-200 rounded hover:border-gray-300 transition-colors flex items-center gap-1.5 text-sm font-medium"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    CSV
-                  </button>
-                </div>
+      {/* Publish Step */}
+      {currentStep === 'publish' && (
+        <div className="space-y-4">
+          <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Publish to Filecoin
+                </h3>
+                <p className="text-sm text-gray-600">
+                  {fullDataset
+                    ? `Publishing both preview (${
+                        data.rows.length
+                      } rows) and full dataset (${fullDataset.totalRows.toLocaleString()} rows)`
+                    : `Publishing preview dataset (${data.rows.length} rows)`}
+                </p>
               </div>
+              <button
+                onClick={() =>
+                  setCurrentStep(fullDataset ? 'generate' : 'preview')
+                }
+                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm font-medium"
+              >
+                Back
+              </button>
             </div>
-
-            {/* Full Dataset Export */}
-            <div className="bg-white rounded-lg p-4 border border-indigo-200">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h5 className="font-medium text-gray-900 mb-1">
-                    Export Full Dataset
-                  </h5>
-                  <p className="text-sm text-gray-600">
-                    Generate and download all {data.totalRows.toLocaleString()}{' '}
-                    rows
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    This will use API credits and may take a few minutes
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => onExport('json', true)}
-                    className="px-3 py-1.5 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors flex items-center gap-1.5 text-sm font-medium"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    JSON
-                  </button>
-                  <button
-                    onClick={() => onExport('csv', true)}
-                    className="px-3 py-1.5 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors flex items-center gap-1.5 text-sm font-medium"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    CSV
-                  </button>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        )}
-
-        {!showExportOptions && (
-          <div className="flex items-center justify-center gap-3">
-            <button
-              onClick={() => onExport('json', false)}
-              className="px-4 py-2 bg-white border border-gray-200 rounded-lg hover:border-gray-300 transition-colors flex items-center gap-2 text-sm font-medium"
-            >
-              <Download className="w-4 h-4" />
-              Export Preview as JSON
-            </button>
-            <button
-              onClick={() => onExport('csv', false)}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2 text-sm font-medium"
-            >
-              <Download className="w-4 h-4" />
-              Export Preview as CSV
-            </button>
           </div>
-        )}
-      </div>
+
+          <FilecoinPublisher
+            data={data}
+            fullDataset={fullDataset}
+            config={memoConfig}
+            publishProgress={publishProgress}
+            setPublishProgress={setPublishProgress}
+            storageEstimate={storageEstimate}
+            setStorageEstimate={setStorageEstimate}
+            publishResult={publishResult}
+            setPublishResult={setPublishResult}
+            showPublishOptions={showPublishOptions}
+            setShowPublishOptions={setShowPublishOptions}
+          />
+        </div>
+      )}
     </div>
   );
 }
