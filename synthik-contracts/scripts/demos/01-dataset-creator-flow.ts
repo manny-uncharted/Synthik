@@ -64,7 +64,7 @@ async function main() {
     const createTx = await provenanceManager.createDataset(
       datasetId,
       'bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi', // Data CID on Filecoin
-      'bafybeischema456789abcdef012345', // Metadata CID on IPFS
+      'bafybeischema456789abcdef012345', // Metadata CID on Filecoin
       'Premium E-commerce Customer Behavior Dataset',
       'High-quality synthetic e-commerce data with customer journeys, purchase patterns, and behavioral analytics. Generated using advanced ML models with privacy-preserving techniques.',
       'CC-BY-4.0', // Creative Commons license

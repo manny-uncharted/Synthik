@@ -8,6 +8,8 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { useState } from 'react';
+import FilecoinPublisher from './FilecoinPublisher';
+import React from 'react';
 
 interface PreviewData {
   rows: Record<string, string | number | boolean | Date | object>[];
@@ -19,12 +21,56 @@ interface PreviewData {
   generationTime: number;
 }
 
+// Storage interfaces for Filecoin publishing
+interface StorageEstimate {
+  proofsetFee: number; // 5 USDFC
+  storageFee: number; // Based on data size
+  bufferAmount: number; // 5 USDFC
+  totalCost: number;
+  isFirstTime: boolean; // Whether user needs to create proofset
+}
+
+interface PublishProgress {
+  stage:
+    | 'idle'
+    | 'estimating'
+    | 'initializing'
+    | 'uploading-metadata'
+    | 'uploading-data'
+    | 'registering'
+    | 'completed'
+    | 'error';
+  metadataProgress: number;
+  dataProgress: number;
+  message: string;
+  error?: string;
+  retryCount: number;
+}
+
+interface PublishResult {
+  metadataCID: string;
+  dataCID: string;
+  transactionHash?: string;
+  timestamp: number;
+}
+
 interface DatasetPreviewProps {
   data: PreviewData | null;
   isGenerating: boolean;
   onRefresh: () => void;
   onExport: (format: 'json' | 'csv', exportFull?: boolean) => void;
   generationProgress?: number;
+  // Dataset configuration for publishing
+  config?: {
+    name: string;
+    description: string;
+    schema: { name: string; type: string; description: string }[];
+    format: string;
+    license: string;
+    visibility: string;
+    rows: number;
+    quality: string;
+  };
 }
 
 export default function DatasetPreview({
@@ -33,10 +79,46 @@ export default function DatasetPreview({
   onRefresh,
   onExport,
   generationProgress = 0,
+  config,
 }: DatasetPreviewProps) {
   const [viewMode, setViewMode] = useState<'table' | 'json'>('table');
   const [copiedRow, setCopiedRow] = useState<number | null>(null);
   const [showExportOptions, setShowExportOptions] = useState(false);
+
+  // Publishing state
+  const [publishProgress, setPublishProgress] = useState<PublishProgress>({
+    stage: 'idle',
+    metadataProgress: 0,
+    dataProgress: 0,
+    message: '',
+    retryCount: 0,
+  });
+  const [storageEstimate, setStorageEstimate] =
+    useState<StorageEstimate | null>(null);
+  const [publishResult, setPublishResult] = useState<PublishResult | null>(
+    null
+  );
+  const [showPublishOptions, setShowPublishOptions] = useState(false);
+
+  // Memoize config before any conditional returns to keep Hook order consistent
+  const memoConfig = React.useMemo(() => {
+    if (config) return config;
+    return {
+      name: 'Generated Dataset',
+      description: 'Synthetically generated dataset',
+      schema:
+        data?.schema.map((field) => ({
+          name: field.name,
+          type: field.type,
+          description: `${field.type} field`,
+        })) || [],
+      format: 'JSON',
+      license: 'MIT',
+      visibility: 'public',
+      rows: data?.totalRows || 0,
+      quality: 'high',
+    };
+  }, [config, data]);
 
   const copyToClipboard = (
     row: Record<string, string | number | boolean | Date | object>,
@@ -294,6 +376,20 @@ export default function DatasetPreview({
         </div>
       )}
 
+      {/* Publish to Filecoin Network Section */}
+      <FilecoinPublisher
+        data={data}
+        config={memoConfig}
+        publishProgress={publishProgress}
+        setPublishProgress={setPublishProgress}
+        storageEstimate={storageEstimate}
+        setStorageEstimate={setStorageEstimate}
+        publishResult={publishResult}
+        setPublishResult={setPublishResult}
+        showPublishOptions={showPublishOptions}
+        setShowPublishOptions={setShowPublishOptions}
+      />
+
       {/* Export Options */}
       <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-6">
         <div className="flex items-center justify-between mb-4">
@@ -405,3 +501,5 @@ export default function DatasetPreview({
     </div>
   );
 }
+
+// Filecoin Publisher Component
