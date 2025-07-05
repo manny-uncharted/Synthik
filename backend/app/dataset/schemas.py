@@ -42,6 +42,9 @@ class DatasetBase(BaseModel):
     license: Optional[str] = None
     price: float = Field(0.0, ge=0.0)
     pricePerRow: float = Field(0.0, ge=0.0)
+    metadata_cid: str
+    dataset_cid: str
+    dataset_preview_cid: str
 
     class Config:
         from_attributes = True

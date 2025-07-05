@@ -87,7 +87,10 @@ async def create_dataset_endpoint(
         price=price,
         pricePerRow=price_per_row,
         datasetType=dataset_type,
-        format=file_format
+        format=file_format,
+        metadata_cid=metadata_cid,
+        dataset_preview_cid=dataset_preview_cid,
+        dataset_cid=dataset_cid
     )
 
     # Create the dataset record in the database
@@ -104,7 +107,10 @@ async def create_dataset_endpoint(
         price=ds.price,
         pricePerRow=ds.price_per_row,
         datasetType=ds.dataset_type,
-        format=ds.format
+        format=ds.format,
+        metadata_cid=ds.metadata_cid,
+        dataset_preview_cid=ds.dataset_preview_cid,
+        dataset_cid=ds.dataset_cid
     )
 
 
