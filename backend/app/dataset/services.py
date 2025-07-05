@@ -47,10 +47,12 @@ def list_datasets(
     page: int = 1,
     limit: int = 20,
     search: str = None,
+    sort_by: str = "created_at",
+    sort_order: str = "desc",
 ) -> Tuple[List[Dataset], int]:
     query = db.query(Dataset)
     if search:
-        query = query.filter(Dataset.name.ilike(f"%{search}%"))
+        query = query.filter(Dataset.name.ilike(f"%{search}%")).order_by(getattr(Dataset, sort_by).desc() if sort_order == "desc" else getattr(Dataset, sort_by).asc())
     total = query.count()
     items = query.offset((page - 1) * limit).limit(limit).all()
     return items, total
