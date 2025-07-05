@@ -49,7 +49,7 @@ def _extract_preview(file_path: str, max_rows: int = 5) -> List[Dict[str, Any]]:
     return preview
 
 @router.post(
-    "/datasets",
+    "",
     status_code=status.HTTP_201_CREATED,
     response_model=DatasetResponse,
 )
