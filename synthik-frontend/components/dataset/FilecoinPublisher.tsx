@@ -35,6 +35,8 @@ interface PreviewData {
   }[];
   totalRows: number;
   generationTime: number;
+  tokensUsed?: number;
+  cost?: number;
 }
 
 interface StorageEstimate {
@@ -64,7 +66,8 @@ interface PublishProgress {
 
 interface PublishResult {
   metadataCID: string;
-  dataCID: string;
+  previewDataCID?: string;
+  fullDataCID?: string;
   transactionHash?: string;
   timestamp: number;
   usingCDN?: boolean;
@@ -72,6 +75,17 @@ interface PublishResult {
 
 interface FilecoinPublisherProps {
   data: PreviewData | null;
+  fullDataset?: {
+    rows: Record<string, string | number | boolean | Date | object>[];
+    schema: {
+      name: string;
+      type: string;
+    }[];
+    totalRows: number;
+    generationTime: number;
+    tokensUsed?: number;
+    cost?: number;
+  } | null;
   config: {
     name: string;
     description: string;
@@ -94,6 +108,7 @@ interface FilecoinPublisherProps {
 
 export default function FilecoinPublisher({
   data,
+  fullDataset,
   config,
   publishProgress,
   setPublishProgress,
@@ -181,9 +196,13 @@ export default function FilecoinPublisher({
     publishResult?.metadataCID || '',
     `${config.name}_metadata.json`
   );
-  const dataDownload = useDownloadRoot(
-    publishResult?.dataCID || '',
-    `${config.name}_data.json`
+  const previewDataDownload = useDownloadRoot(
+    publishResult?.previewDataCID || '',
+    `${config.name}_preview_data.json`
+  );
+  const fullDataDownload = useDownloadRoot(
+    publishResult?.fullDataCID || '',
+    `${config.name}_full_data.json`
   );
 
   const showCidInfo = useCallback(
@@ -443,6 +462,8 @@ ${
         license: config.license,
         visibility: config.visibility,
         generationTime: data.generationTime,
+        ...(data.tokensUsed && { tokensUsed: data.tokensUsed }),
+        ...(data.cost && { generationCost: data.cost }),
         version: '1.0.0',
         timestamp: Date.now(),
       });
@@ -512,10 +533,52 @@ ${
 
       const dataCID = dataResult.commp.toString();
 
-      // Complete
+      // Step 2: Upload data (both preview and full if available)
+      const previewDataCID = dataCID;
+      let fullDatasetCID: string | undefined;
+
+      if (fullDataset) {
+        setPublishProgress((prev) => ({
+          ...prev,
+          stage: 'uploading-data',
+          message: 'Uploading full dataset content to Filecoin...',
+          dataProgress: 0,
+        }));
+
+        const fullDataJson = JSON.stringify(fullDataset.rows);
+        const fullDataBytes = new TextEncoder().encode(fullDataJson);
+
+        const fullDataResult = await storageService.upload(fullDataBytes, {
+          onUploadComplete: () => {
+            setPublishProgress((prev) => ({
+              ...prev,
+              dataProgress: 80,
+              message: 'Full dataset uploaded successfully!',
+            }));
+          },
+          onRootAdded: async () => {
+            setPublishProgress((prev) => ({
+              ...prev,
+              dataProgress: 90,
+              message: 'Adding full dataset to your proof set...',
+            }));
+          },
+          onRootConfirmed: () => {
+            setPublishProgress((prev) => ({
+              ...prev,
+              dataProgress: 100,
+              message: 'Full dataset confirmed on Filecoin!',
+            }));
+          },
+        });
+
+        fullDatasetCID = fullDataResult.commp.toString();
+      }
+
       const result: PublishResult = {
         metadataCID,
-        dataCID,
+        previewDataCID,
+        fullDataCID: fullDatasetCID,
         timestamp: Date.now(),
         usingCDN,
       };
@@ -598,6 +661,8 @@ ${
           license: config.license,
           visibility: config.visibility,
           generationTime: data.generationTime,
+          ...(data.tokensUsed && { tokensUsed: data.tokensUsed }),
+          ...(data.cost && { generationCost: data.cost }),
           version: '1.0.0',
           timestamp: Date.now(),
         });
@@ -660,6 +725,8 @@ ${
           license: config.license,
           visibility: config.visibility,
           generationTime: data.generationTime,
+          ...(data.tokensUsed && { tokensUsed: data.tokensUsed }),
+          ...(data.cost && { generationCost: data.cost }),
           version: '1.0.0',
           timestamp: Date.now(),
         });
@@ -1127,51 +1194,116 @@ ${
                       </button>
                     </div>
                   </div>
-                  <div>
-                    <span className="font-medium text-gray-900">Data CID:</span>
-                    <div className="flex items-center gap-2 mt-1">
-                      <code className="text-xs bg-gray-100 px-2 py-1 rounded flex-1">
-                        {publishResult.dataCID}
-                      </code>
-                      <button
-                        onClick={() => dataDownload.downloadMutation.mutate()}
-                        disabled={dataDownload.downloadMutation.isPending}
-                        className="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {dataDownload.downloadMutation.isPending
-                          ? 'Downloading...'
-                          : 'Download'}
-                      </button>
-                      {dataDownload.downloadMutation.error && (
-                        <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-800">
-                          Download failed:{' '}
-                          {dataDownload.downloadMutation.error.message}
-                        </div>
-                      )}
-                      {publishResult.usingCDN && network === 'calibration' && (
+
+                  {/* Preview Data CID */}
+                  {publishResult.previewDataCID && (
+                    <div>
+                      <span className="font-medium text-gray-900">
+                        Preview Data CID:
+                      </span>
+                      <div className="flex items-center gap-2 mt-1">
+                        <code className="text-xs bg-gray-100 px-2 py-1 rounded flex-1">
+                          {publishResult.previewDataCID}
+                        </code>
                         <button
-                          onClick={() => {
-                            const cdnUrl = `https://${address}.calibration.filcdn.io/${publishResult.dataCID}`;
-                            window.open(cdnUrl, '_blank');
-                          }}
-                          className="px-2 py-1 bg-purple-600 text-white rounded text-xs hover:bg-purple-700 transition-colors"
+                          onClick={() =>
+                            previewDataDownload.downloadMutation.mutate()
+                          }
+                          disabled={
+                            previewDataDownload.downloadMutation.isPending
+                          }
+                          className="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          CDN Link
+                          {previewDataDownload.downloadMutation.isPending
+                            ? 'Downloading...'
+                            : 'Download'}
                         </button>
-                      )}
-                      <button
-                        onClick={() =>
-                          showCidInfo(
-                            publishResult.dataCID,
-                            publishResult.usingCDN
-                          )
-                        }
-                        className="px-2 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700 transition-colors"
-                      >
-                        Info
-                      </button>
+                        {previewDataDownload.downloadMutation.error && (
+                          <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-800">
+                            Download failed:{' '}
+                            {previewDataDownload.downloadMutation.error.message}
+                          </div>
+                        )}
+                        {publishResult.usingCDN &&
+                          network === 'calibration' && (
+                            <button
+                              onClick={() => {
+                                const cdnUrl = `https://${address}.calibration.filcdn.io/${publishResult.previewDataCID}`;
+                                window.open(cdnUrl, '_blank');
+                              }}
+                              className="px-2 py-1 bg-purple-600 text-white rounded text-xs hover:bg-purple-700 transition-colors"
+                            >
+                              CDN Link
+                            </button>
+                          )}
+                        <button
+                          onClick={() =>
+                            showCidInfo(
+                              publishResult.previewDataCID!,
+                              publishResult.usingCDN
+                            )
+                          }
+                          className="px-2 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700 transition-colors"
+                        >
+                          Info
+                        </button>
+                      </div>
                     </div>
-                  </div>
+                  )}
+
+                  {/* Full Dataset Data CID */}
+                  {publishResult.fullDataCID && (
+                    <div>
+                      <span className="font-medium text-gray-900">
+                        Full Dataset Data CID:
+                      </span>
+                      <div className="flex items-center gap-2 mt-1">
+                        <code className="text-xs bg-gray-100 px-2 py-1 rounded flex-1">
+                          {publishResult.fullDataCID}
+                        </code>
+                        <button
+                          onClick={() =>
+                            fullDataDownload.downloadMutation.mutate()
+                          }
+                          disabled={fullDataDownload.downloadMutation.isPending}
+                          className="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {fullDataDownload.downloadMutation.isPending
+                            ? 'Downloading...'
+                            : 'Download'}
+                        </button>
+                        {fullDataDownload.downloadMutation.error && (
+                          <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-800">
+                            Download failed:{' '}
+                            {fullDataDownload.downloadMutation.error.message}
+                          </div>
+                        )}
+                        {publishResult.usingCDN &&
+                          network === 'calibration' && (
+                            <button
+                              onClick={() => {
+                                const cdnUrl = `https://${address}.calibration.filcdn.io/${publishResult.fullDataCID}`;
+                                window.open(cdnUrl, '_blank');
+                              }}
+                              className="px-2 py-1 bg-purple-600 text-white rounded text-xs hover:bg-purple-700 transition-colors"
+                            >
+                              CDN Link
+                            </button>
+                          )}
+                        <button
+                          onClick={() =>
+                            showCidInfo(
+                              publishResult.fullDataCID!,
+                              publishResult.usingCDN
+                            )
+                          }
+                          className="px-2 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700 transition-colors"
+                        >
+                          Info
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

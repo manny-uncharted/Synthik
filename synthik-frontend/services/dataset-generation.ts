@@ -1731,13 +1731,21 @@ export class DatasetGenerationService {
   async generatePreview(
     config: DatasetConfig,
     model: GenerationModel
-  ): Promise<DataRecord[]> {
+  ): Promise<{
+    data: DataRecord[];
+    metadata: {
+      totalRows: number;
+      generationTime: number;
+      tokensUsed: number;
+      cost: number;
+    };
+  }> {
     const previewRequest: GenerationRequest = {
       model,
       config: { ...config, rows: Math.min(10, config.rows) },
     };
     const response = await this.generateDataset(previewRequest);
-    return response.data;
+    return { data: response.data, metadata: response.metadata };
   }
 
   private estimateTokens(data: DataRecord[]): number {

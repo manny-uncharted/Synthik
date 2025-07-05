@@ -129,14 +129,14 @@ trainer = dataset.get_trainer(
             />
             <span className="text-xl font-medium">Synthik</span>
           </div>
-
+\
           <div className="flex items-center gap-8">
-            <a
+            <Link
               href="/datasets"
               className="px-5 py-2.5 text-sm font-medium btn-primary rounded-lg flex items-center gap-2"
             >
               Launch App <ArrowUpRight className="w-3 h-3" />
-            </a>
+            </Link>
           </div>
         </div>
       </nav>
