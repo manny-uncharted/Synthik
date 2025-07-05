@@ -2,12 +2,18 @@ from pydantic import BaseModel, Field, conlist, constr
 from typing import List, Optional, Any
 from datetime import datetime
 
+
+def to_camel(string: str) -> str:
+    parts = string.split("_")
+    return parts[0] + "".join(word.capitalize() for word in parts[1:])
+
+
 class SchemaFieldConstraint(BaseModel):
     required: Optional[bool] = False
     unique: Optional[bool] = False
-    min: Optional[float]
-    max: Optional[float]
-    pattern: Optional[str]
+    min: Optional[float] = None       # ← now has default
+    max: Optional[float] = None       # ← now has default
+    pattern: Optional[str] = None     # ← now has default
     enum: Optional[List[str]] = []
 
 class SchemaField(BaseModel):
@@ -62,34 +68,29 @@ class GenerationLineage(BaseModel):
 class DatasetCreate(DatasetBase):
     pass  # all fields inherited
 
-class DatasetResponse(DatasetBase):
-    id: str
+class DatasetResponse(BaseModel):
+    id: str  
     creator_id: str
-    rows: int
-    tokens: int
-    is_verified: bool
-    is_locked: bool
-    downloads: int
-    views: int
-    purchases: int
-    stars: int
-    rating: float
-    previewRows: int
-    previewFilecoinCID: Optional[str]
-    fullFilecoinCID: Optional[str]
-    transactionHash: Optional[str]
+    name: str
+    description: Optional[str]
+    category: Optional[str]
+    tags: List[str]
+    visibility: str
+    license: Optional[str]
+    price: float
+    format: str
     metadata_cid: str
-    dataset_cid: str
     dataset_preview_cid: str
-    blockNumber: Optional[int]
-    generationLineage: Optional[GenerationLineage]
-    createdAt: datetime
-    updatedAt: datetime
-    lastModified: datetime
-    status: str
+    dataset_cid: str
+    pricePerRow: float  = Field(alias="price_per_row")
+    datasetType: str    = Field(alias="dataset_type")
 
     class Config:
-        from_attributes = True
+        from_attributes     = True
+        populate_by_name    = True
+        alias_generator     = to_camel
+        allow_population_by_field_name = True
+
 
 class DatasetListResponse(BaseModel):
     datasets: List[DatasetResponse]
