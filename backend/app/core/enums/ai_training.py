@@ -38,9 +38,18 @@ class JobStatus(str, enum.Enum):
     PENDING = "pending"
     PREPARING_DATA = "preparing_data"
     SUBMITTED = "submitted"
+    INITIALIZING = "initializing"
     QUEUED = "queued"
     RUNNING = "running"
     COMPLETED = "completed"
-    FAILED = "failed"
+    CANCELLING = "cancelling"
     CANCELLED = "cancelled"
+    FAILED = "failed"
+    UNKNOWN = "unknown"
     UPDATING_METRICS = "updating_metrics"
+
+
+class HFRepoType(str, enum.Enum):
+    MODEL = "model"
+    SPACE = "space"
+    

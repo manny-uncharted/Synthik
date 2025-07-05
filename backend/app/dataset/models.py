@@ -22,6 +22,7 @@ class Dataset(Base):
     rows: int = Column(Integer, default=0)
     tokens: int = Column(Integer, default=0)
     format: str = Column(String(20), nullable=False)
+    dataset_type: str = Column(String(20), nullable=False)
     schema = Column(JSON, default=[])
     is_verified: bool = Column(Boolean, default=False)
     is_locked: bool = Column(Boolean, default=False)

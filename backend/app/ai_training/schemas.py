@@ -164,3 +164,7 @@ class ModelListResponse(BaseModel):
     limit: int
     total: int
     totalPages: int
+
+
+class JobStatusResponse(BaseModel):
+    status: JobStatus
