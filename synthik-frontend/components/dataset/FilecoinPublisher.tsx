@@ -67,6 +67,7 @@ interface PublishResult {
   dataCID: string;
   transactionHash?: string;
   timestamp: number;
+  usingCDN?: boolean;
 }
 
 interface FilecoinPublisherProps {
@@ -185,38 +186,62 @@ export default function FilecoinPublisher({
     `${config.name}_data.json`
   );
 
-  const showCidInfo = useCallback((cid: string) => {
-    // Show CID information and explain how to access it
-    const message = `
+  const showCidInfo = useCallback(
+    (cid: string, withCDN: boolean = false) => {
+      let message = `
 Filecoin CID: ${cid}
 
 This is a Filecoin-specific CID that contains your data. To access it:
 
-1. Use the Download button (recommended)
-2. Use Filecoin-compatible tools like:
+1. Use the Download button (recommended)`;
+
+      if (withCDN && address && network === 'calibration') {
+        const cdnUrl = `https://${address}.calibration.filcdn.io/${cid}`;
+        message += `
+2. Direct CDN access (no wallet needed):
+   ${cdnUrl}`;
+      }
+
+      message += `
+${withCDN ? '3' : '2'}. Use Filecoin-compatible tools like:
    - IPFS Desktop with Filecoin support
    - Filecoin Station
    - Other Web3 storage tools
 
-3. Copy this CID to use with other applications
+${withCDN ? '4' : '3'}. Copy this CID to use with other applications
 
-Note: Regular IPFS gateways may not work with Filecoin CIDs.
+${
+  withCDN
+    ? 'Note: CDN URLs work only on Calibration testnet.'
+    : 'Note: Regular IPFS gateways may not work with Filecoin CIDs.'
+}
     `;
 
-    alert(message);
+      alert(message);
 
-    // Also copy to clipboard if possible
-    if (navigator.clipboard) {
-      navigator.clipboard
-        .writeText(cid)
-        .then(() => {
-          console.log('CID copied to clipboard');
-        })
-        .catch(() => {
-          console.log('Failed to copy CID to clipboard');
-        });
-    }
-  }, []);
+      // Copy the CDN URL if available, otherwise copy the CID
+      const textToCopy =
+        withCDN && address && network === 'calibration'
+          ? `https://${address}.calibration.filcdn.io/${cid}`
+          : cid;
+
+      if (navigator.clipboard) {
+        navigator.clipboard
+          .writeText(textToCopy)
+          .then(() => {
+            console.log(
+              withCDN
+                ? 'CDN URL copied to clipboard'
+                : 'CID copied to clipboard'
+            );
+          })
+          .catch(() => {
+            console.log('Failed to copy to clipboard');
+          });
+      }
+    },
+    [address, network]
+  );
 
   // Publish to Filecoin using Synapse SDK
   const publishToFilecoin = useCallback(async () => {
@@ -244,102 +269,162 @@ Note: Regular IPFS gateways may not work with Filecoin CIDs.
         retryCount: 0,
       });
 
-      // Create Synapse instance using the ethers provider from Privy
-      const synapse = await Synapse.create({
-        provider: provider,
-        disableNonceManager: true, // Let the wallet handle nonce management
-        withCDN: false,
-      });
-
+      // Try CDN first, then fallback to non-CDN
+      let synapse;
       let storageService;
+      let usingCDN = false;
 
-      if (hasExistingProofsets) {
-        // User has existing proofsets - use existing storage configuration
+      try {
+        // First attempt: Try with CDN
         setPublishProgress((prev) => ({
           ...prev,
-          message: 'Using your existing storage configuration...',
-          metadataProgress: 20,
+          message: 'Attempting to use CDN-enabled storage...',
+          metadataProgress: 10,
         }));
 
-        const { getProofset } = await import('@/utils/getProofset');
-        const { providerId } = await getProofset(signer, network, address);
+        synapse = await Synapse.create({
+          provider: provider,
+          disableNonceManager: true,
+          withCDN: true,
+        });
 
-        if (!providerId) {
-          throw new Error(
-            'No storage provider found. Please configure storage first.'
-          );
+        if (hasExistingProofsets) {
+          const { getProofset } = await import('@/utils/getProofset');
+          const { providerId } = await getProofset(signer, network, address);
+
+          if (!providerId) {
+            throw new Error('No storage provider found in proofsets');
+          }
+
+          storageService = await synapse.createStorage({
+            providerId,
+            callbacks: {
+              onProviderSelected: (provider) => {
+                console.log(`✅ Using CDN-enabled provider: ${provider.owner}`);
+                setPublishProgress((prev) => ({
+                  ...prev,
+                  message: 'Using CDN-enabled storage provider...',
+                  metadataProgress: 20,
+                }));
+              },
+            },
+          });
+        } else {
+          storageService = await synapse.createStorage({
+            callbacks: {
+              onProviderSelected: (provider) => {
+                console.log(
+                  `✅ Selected CDN-enabled provider: ${provider.owner}`
+                );
+                setPublishProgress((prev) => ({
+                  ...prev,
+                  message: 'CDN-enabled storage provider selected...',
+                  metadataProgress: 15,
+                }));
+              },
+              onProofSetResolved: (info) => {
+                console.log(
+                  `✅ CDN proof set ready: ${
+                    info.isExisting ? 'existing' : 'new'
+                  }`
+                );
+                setPublishProgress((prev) => ({
+                  ...prev,
+                  message: 'CDN proof set configured...',
+                  metadataProgress: 25,
+                }));
+              },
+            },
+          });
         }
 
-        // Create storage service with existing proofset
-        storageService = await synapse.createStorage({
-          providerId,
-          callbacks: {
-            onProviderSelected: (provider) => {
-              console.log(
-                `Using configured storage provider: ${provider.owner}`
-              );
-              setPublishProgress((prev) => ({
-                ...prev,
-                message: 'Using your configured storage provider...',
-                metadataProgress: 30,
-              }));
-            },
-            onProofSetResolved: (info) => {
-              console.log(`Using existing proof set: ${info.proofSetId}`);
-              setPublishProgress((prev) => ({
-                ...prev,
-                message: 'Using your existing proof set...',
-                metadataProgress: 40,
-              }));
-            },
-          },
-        });
-      } else {
-        // User doesn't have proofsets - create new storage configuration
+        usingCDN = true;
+        console.log('✅ Successfully configured CDN-enabled storage');
+      } catch (cdnError) {
+        console.warn(
+          '⚠️ CDN storage failed, falling back to non-CDN:',
+          cdnError
+        );
+
+        // Fallback: Try without CDN
         setPublishProgress((prev) => ({
           ...prev,
-          message: 'Setting up new storage configuration...',
-          metadataProgress: 20,
+          message: 'CDN unavailable, using standard storage...',
+          metadataProgress: 10,
         }));
 
-        // Create storage service without providerId (will create new proofset)
-        storageService = await synapse.createStorage({
-          callbacks: {
-            onProviderSelected: (provider) => {
-              console.log(`Selected storage provider: ${provider.owner}`);
-              setPublishProgress((prev) => ({
-                ...prev,
-                message: 'Storage provider selected...',
-                metadataProgress: 25,
-              }));
-            },
-            onProofSetResolved: (info) => {
-              if (info.isExisting) {
-                console.log(`Using existing proof set: ${info.proofSetId}`);
-                setPublishProgress((prev) => ({
-                  ...prev,
-                  message: 'Using existing proof set...',
-                  metadataProgress: 35,
-                }));
-              } else {
-                console.log(`Created new proof set: ${info.proofSetId}`);
-                setPublishProgress((prev) => ({
-                  ...prev,
-                  message: 'New proof set created...',
-                  metadataProgress: 35,
-                }));
-              }
-            },
-            onProofSetCreationStarted: (transaction) => {
-              console.log(`Creating proof set, tx: ${transaction.hash}`);
-              setPublishProgress((prev) => ({
-                ...prev,
-                message: 'Creating proof set on blockchain...',
-                metadataProgress: 30,
-              }));
-            },
-          },
-        });
+        try {
+          synapse = await Synapse.create({
+            provider: provider,
+            disableNonceManager: true,
+            withCDN: false,
+          });
+
+          if (hasExistingProofsets) {
+            const { getProofset } = await import('@/utils/getProofset');
+            const { providerId } = await getProofset(signer, network, address);
+
+            if (!providerId) {
+              throw new Error('No storage provider found in proofsets');
+            }
+
+            storageService = await synapse.createStorage({
+              providerId,
+              callbacks: {
+                onProviderSelected: (provider) => {
+                  console.log(`✅ Using standard provider: ${provider.owner}`);
+                  setPublishProgress((prev) => ({
+                    ...prev,
+                    message: 'Using standard storage provider...',
+                    metadataProgress: 20,
+                  }));
+                },
+              },
+            });
+          } else {
+            storageService = await synapse.createStorage({
+              callbacks: {
+                onProviderSelected: (provider) => {
+                  console.log(
+                    `✅ Selected standard provider: ${provider.owner}`
+                  );
+                  setPublishProgress((prev) => ({
+                    ...prev,
+                    message: 'Standard storage provider selected...',
+                    metadataProgress: 15,
+                  }));
+                },
+                onProofSetResolved: (info) => {
+                  console.log(
+                    `✅ Standard proof set ready: ${
+                      info.isExisting ? 'existing' : 'new'
+                    }`
+                  );
+                  setPublishProgress((prev) => ({
+                    ...prev,
+                    message: 'Standard proof set configured...',
+                    metadataProgress: 25,
+                  }));
+                },
+              },
+            });
+          }
+
+          usingCDN = false;
+          console.log('✅ Successfully configured standard storage');
+        } catch (fallbackError) {
+          console.error(
+            '❌ Both CDN and standard storage failed:',
+            fallbackError
+          );
+          throw new Error(
+            `Storage configuration failed: ${
+              fallbackError instanceof Error
+                ? fallbackError.message
+                : 'Unknown error'
+            }`
+          );
+        }
       }
 
       // Step 1: Upload metadata
@@ -432,13 +517,16 @@ Note: Regular IPFS gateways may not work with Filecoin CIDs.
         metadataCID,
         dataCID,
         timestamp: Date.now(),
+        usingCDN,
       };
 
       setPublishResult(result);
       setPublishProgress((prev) => ({
         ...prev,
         stage: 'completed',
-        message: 'Dataset published successfully to Filecoin!',
+        message: usingCDN
+          ? 'Dataset published successfully to Filecoin with CDN support!'
+          : 'Dataset published successfully to Filecoin!',
       }));
     } catch (error) {
       console.error('Publishing failed:', error);
@@ -983,6 +1071,11 @@ Note: Regular IPFS gateways may not work with Filecoin CIDs.
                 </p>
                 <p className="text-sm text-green-800 mb-3">
                   Your dataset is now permanently stored on Filecoin
+                  {publishResult.usingCDN && network === 'calibration' && (
+                    <span className="block mt-1 font-medium">
+                      🚀 CDN enabled for fast access without wallet signatures!
+                    </span>
+                  )}
                 </p>
                 <div className="space-y-3 text-sm">
                   <div>
@@ -1010,8 +1103,24 @@ Note: Regular IPFS gateways may not work with Filecoin CIDs.
                           {metadataDownload.downloadMutation.error.message}
                         </div>
                       )}
+                      {publishResult.usingCDN && network === 'calibration' && (
+                        <button
+                          onClick={() => {
+                            const cdnUrl = `https://${address}.calibration.filcdn.io/${publishResult.metadataCID}`;
+                            window.open(cdnUrl, '_blank');
+                          }}
+                          className="px-2 py-1 bg-purple-600 text-white rounded text-xs hover:bg-purple-700 transition-colors"
+                        >
+                          CDN Link
+                        </button>
+                      )}
                       <button
-                        onClick={() => showCidInfo(publishResult.metadataCID)}
+                        onClick={() =>
+                          showCidInfo(
+                            publishResult.metadataCID,
+                            publishResult.usingCDN
+                          )
+                        }
                         className="px-2 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700 transition-colors"
                       >
                         Info
@@ -1039,8 +1148,24 @@ Note: Regular IPFS gateways may not work with Filecoin CIDs.
                           {dataDownload.downloadMutation.error.message}
                         </div>
                       )}
+                      {publishResult.usingCDN && network === 'calibration' && (
+                        <button
+                          onClick={() => {
+                            const cdnUrl = `https://${address}.calibration.filcdn.io/${publishResult.dataCID}`;
+                            window.open(cdnUrl, '_blank');
+                          }}
+                          className="px-2 py-1 bg-purple-600 text-white rounded text-xs hover:bg-purple-700 transition-colors"
+                        >
+                          CDN Link
+                        </button>
+                      )}
                       <button
-                        onClick={() => showCidInfo(publishResult.dataCID)}
+                        onClick={() =>
+                          showCidInfo(
+                            publishResult.dataCID,
+                            publishResult.usingCDN
+                          )
+                        }
                         className="px-2 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700 transition-colors"
                       >
                         Info
