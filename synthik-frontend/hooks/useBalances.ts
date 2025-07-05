@@ -21,18 +21,18 @@ export const useBalances = () => {
     chainId,
   } = usePrivyEthers();
 
-  const provider = wagmiProvider ?? privyProvider;
-  const address = wagmiAddress ?? privyAddress;
+  // Prioritize Privy over wagmi
+  const provider = privyProvider ?? wagmiProvider;
+  const address = privyAddress ?? wagmiAddress;
 
   const { data: wagmiNetwork } = useNetwork();
 
   const network =
-    wagmiNetwork ??
     (chainId === 314
       ? 'mainnet'
       : chainId === 314159
       ? 'calibration'
-      : undefined);
+      : undefined) ?? wagmiNetwork;
 
   const query = useQuery({
     enabled: !!address && !!provider && !!network,
@@ -41,7 +41,10 @@ export const useBalances = () => {
       if (!provider) throw new Error('Provider not found');
       if (!network) throw new Error('Network not found');
 
-      const synapse = await Synapse.create({ provider });
+      const synapse = await Synapse.create({
+        provider,
+        disableNonceManager: true, // Let the wallet handle nonce management
+      });
 
       // Fetch raw balances
       const [filRaw, usdfcRaw, paymentsRaw] = await Promise.all([

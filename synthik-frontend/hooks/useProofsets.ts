@@ -1,9 +1,8 @@
 import { PandoraService } from '@filoz/synapse-sdk/pandora';
-import { useEthersSigner } from '@/hooks/useEthers';
+import { usePrivyEthers } from '@/hooks/usePrivyEthers';
 import { useQuery } from '@tanstack/react-query';
 import { CONTRACT_ADDRESSES } from '@filoz/synapse-sdk';
 import { useNetwork } from '@/hooks/useNetwork';
-import { useAccount } from 'wagmi';
 import { ProofSetDetails, ProofSetsResponse, Provider } from '@/utils/types';
 
 /**
@@ -47,9 +46,8 @@ const fetchProofSetDetails = async (
  * @returns Query result containing proof sets and their details
  */
 export const useProofsets = () => {
-  const signer = useEthersSigner();
+  const { signer, address } = usePrivyEthers();
   const { data: network } = useNetwork();
-  const { address } = useAccount();
 
   return useQuery<ProofSetsResponse, Error>({
     enabled: !!address,

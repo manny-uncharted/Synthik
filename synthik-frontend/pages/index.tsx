@@ -15,6 +15,8 @@ import {
   CheckCircle,
   Play,
 } from 'lucide-react';
+import Link from 'next/link';
+import Image from 'next/image';
 
 export default function Home() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -119,7 +121,12 @@ trainer = dataset.get_trainer(
       <nav className="fixed top-0 w-full z-50 px-8 lg:px-16 py-6 ">
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg" />
+            <Image
+              src="/synthik.png"
+              alt="Synthik Logo"
+              width={32}
+              height={32}
+            />
             <span className="text-xl font-medium">Synthik</span>
           </div>
 
