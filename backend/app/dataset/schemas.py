@@ -75,6 +75,9 @@ class DatasetResponse(DatasetBase):
     previewFilecoinCID: Optional[str]
     fullFilecoinCID: Optional[str]
     transactionHash: Optional[str]
+    metadata_cid: str
+    dataset_cid: str
+    dataset_preview_cid: str
     blockNumber: Optional[int]
     generationLineage: Optional[GenerationLineage]
     createdAt: datetime

@@ -62,6 +62,9 @@ async def create_dataset_endpoint(
     license: str = Form(...),
     price: float = Form(0.0),
     price_per_row: float = Form(0.0),
+    metadata_cid: str = Form(..., description="CID of metadata"),
+    dataset_preview_cid: str = Form(..., description="CID of dataset preview"),
+    dataset_cid: str = Form(..., description="CID of dataset"),
     data_type: str = Form("csv", description="csv|text|image"),
     dataset_type: str = Form("upload", description="upload|custom|template"),
     db: Session = Depends(get_db)
