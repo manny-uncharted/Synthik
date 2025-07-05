@@ -20,6 +20,7 @@ import { ethers } from 'ethers';
 import { useBalances } from '@/hooks/useBalances';
 import { usePayment } from '@/hooks/usePayment';
 import { useProofsets } from '@/hooks/useProofsets';
+import { useDownloadRoot } from '@/hooks/useDownloadRoot';
 import { useAccount } from 'wagmi';
 import { formatUnits } from 'viem';
 import { config } from '@/utils/config';
@@ -173,6 +174,49 @@ export default function FilecoinPublisher({
 
   const isStorageReady = balances?.isSufficient && !isBalanceLoading;
   const hasInsufficientBalance = balances && !balances.isSufficient;
+
+  // Create download hooks for the published results
+  const metadataDownload = useDownloadRoot(
+    publishResult?.metadataCID || '',
+    `${config.name}_metadata.json`
+  );
+  const dataDownload = useDownloadRoot(
+    publishResult?.dataCID || '',
+    `${config.name}_data.json`
+  );
+
+  const showCidInfo = useCallback((cid: string) => {
+    // Show CID information and explain how to access it
+    const message = `
+Filecoin CID: ${cid}
+
+This is a Filecoin-specific CID that contains your data. To access it:
+
+1. Use the Download button (recommended)
+2. Use Filecoin-compatible tools like:
+   - IPFS Desktop with Filecoin support
+   - Filecoin Station
+   - Other Web3 storage tools
+
+3. Copy this CID to use with other applications
+
+Note: Regular IPFS gateways may not work with Filecoin CIDs.
+    `;
+
+    alert(message);
+
+    // Also copy to clipboard if possible
+    if (navigator.clipboard) {
+      navigator.clipboard
+        .writeText(cid)
+        .then(() => {
+          console.log('CID copied to clipboard');
+        })
+        .catch(() => {
+          console.log('Failed to copy CID to clipboard');
+        });
+    }
+  }, []);
 
   // Publish to Filecoin using Synapse SDK
   const publishToFilecoin = useCallback(async () => {
@@ -940,20 +984,68 @@ export default function FilecoinPublisher({
                 <p className="text-sm text-green-800 mb-3">
                   Your dataset is now permanently stored on Filecoin
                 </p>
-                <div className="space-y-2 text-sm">
+                <div className="space-y-3 text-sm">
                   <div>
                     <span className="font-medium text-gray-900">
                       Metadata CID:
                     </span>
-                    <code className="ml-2 text-xs bg-gray-100 px-2 py-1 rounded">
-                      {publishResult.metadataCID}
-                    </code>
+                    <div className="flex items-center gap-2 mt-1">
+                      <code className="text-xs bg-gray-100 px-2 py-1 rounded flex-1">
+                        {publishResult.metadataCID}
+                      </code>
+                      <button
+                        onClick={() =>
+                          metadataDownload.downloadMutation.mutate()
+                        }
+                        disabled={metadataDownload.downloadMutation.isPending}
+                        className="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {metadataDownload.downloadMutation.isPending
+                          ? 'Downloading...'
+                          : 'Download'}
+                      </button>
+                      {metadataDownload.downloadMutation.error && (
+                        <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-800">
+                          Download failed:{' '}
+                          {metadataDownload.downloadMutation.error.message}
+                        </div>
+                      )}
+                      <button
+                        onClick={() => showCidInfo(publishResult.metadataCID)}
+                        className="px-2 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700 transition-colors"
+                      >
+                        Info
+                      </button>
+                    </div>
                   </div>
                   <div>
                     <span className="font-medium text-gray-900">Data CID:</span>
-                    <code className="ml-2 text-xs bg-gray-100 px-2 py-1 rounded">
-                      {publishResult.dataCID}
-                    </code>
+                    <div className="flex items-center gap-2 mt-1">
+                      <code className="text-xs bg-gray-100 px-2 py-1 rounded flex-1">
+                        {publishResult.dataCID}
+                      </code>
+                      <button
+                        onClick={() => dataDownload.downloadMutation.mutate()}
+                        disabled={dataDownload.downloadMutation.isPending}
+                        className="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {dataDownload.downloadMutation.isPending
+                          ? 'Downloading...'
+                          : 'Download'}
+                      </button>
+                      {dataDownload.downloadMutation.error && (
+                        <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-800">
+                          Download failed:{' '}
+                          {dataDownload.downloadMutation.error.message}
+                        </div>
+                      )}
+                      <button
+                        onClick={() => showCidInfo(publishResult.dataCID)}
+                        className="px-2 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700 transition-colors"
+                      >
+                        Info
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>

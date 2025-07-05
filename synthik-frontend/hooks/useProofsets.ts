@@ -31,7 +31,11 @@ const fetchProofSetDetails = async (
       if (response.status === 404) {
         return null;
       }
-      throw new Error(`HTTP error! status: ${response.status}`);
+      // Log error but don't throw - proofset details are not critical for publishing
+      console.warn(
+        `Failed to fetch proofset ${proofsetId} details: HTTP ${response.status}`
+      );
+      return null;
     }
 
     return await response.json();
