@@ -4,6 +4,7 @@ import { useRouter } from 'next/router';
 import { Plus, Wallet, LogOut, User } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import WalletModal from './WalletModal';
+import Image from 'next/image';
 
 interface LayoutProps {
   children: ReactNode;
@@ -66,7 +67,12 @@ export default function Layout({ children }: LayoutProps) {
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-8">
             <Link href="/" className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg" />
+              <Image
+                src="/synthik.png"
+                alt="Synthik Logo"
+                width={32}
+                height={32}
+              />
               <span className="text-xl font-medium">Synthik</span>
             </Link>
           </div>

@@ -2,7 +2,7 @@ import { getPandoraAddress } from "@/utils";
 import { Synapse } from "@filoz/synapse-sdk";
 import { PandoraService, CONTRACT_ADDRESSES } from "@filoz/synapse-sdk";
 import { PROOF_SET_CREATION_FEE } from "@/utils";
-import { config } from "@/config";
+import { config } from "@/utils/config";
 
 /**
  * Performs a preflight check before file upload to ensure sufficient USDFC balance and allowances
