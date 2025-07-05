@@ -1,0 +1,20 @@
+[project]
+name = "mlops-sdk"
+version = "0.1.0"
+description = "Enterprise ML-ops SDK + CLI for training across SageMaker, Vertex AI, HF, local"
+readme = "README.md"
+license = { text = "Apache-2.0" }
+authors = [{ name="Your Team", email="ml@company.com" }]
+requires-python = ">=3.9"
+dependencies = [
+  "httpx>=0.24.0",
+  "pydantic>=2.0",
+  "typer[all]>=0.9",
+]
+
+[project.urls]
+"Homepage" = "https://synthik.io"
+"Repository" = "https://github.com/synthik/mlops-sdk.git"
+
+[project.scripts]
+mlops = "synthik_py_sdk.cli:app"
