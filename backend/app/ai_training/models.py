@@ -82,7 +82,7 @@ class Model(Base):
 
     id: str = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     name: str = Column(String(255), nullable=False)
-    user_wallet_address: str = Column(String, index=True, nullable=False)
+    user_wallet_address: str = Column(String, index=True, nullable=True)
     description: str = Column(Text, nullable=True)
     provider: str = Column(String(100), nullable=False)
     base_model: str = Column(String(100), nullable=False)

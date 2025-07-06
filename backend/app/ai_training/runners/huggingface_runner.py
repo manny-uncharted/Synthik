@@ -35,6 +35,7 @@ def _generate_requirements_txt_content(script_config: Dict[str, Any]) -> str:
     """Generates the content for requirements.txt."""
     return f"""
         numpy<2.0
+        requests
         transformers>={script_config.get("transformers_version", DEFAULT_TRANSFORMERS_VERSION)}
         peft=={script_config.get("peft_version", DEFAULT_PEFT_VERSION)}
         torch>={script_config.get("torch_version", DEFAULT_TORCH_VERSION)}
