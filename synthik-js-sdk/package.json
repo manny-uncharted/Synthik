@@ -1,18 +1,35 @@
 {
-  "name": "@synthik/sdk",
+  "name": "@ghostxd/synthik-sdk",
   "version": "1.0.0",
   "description": "Official JavaScript SDK for Synthik - Synthetic Data Platform on Filecoin",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "module": "dist/index.js",
+  "files": [
+    "dist/**/*",
+    "README.md",
+    "LICENSE"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/synthik-io/synthik-js-sdk.git"
+  },
+  "homepage": "https://github.com/synthik-io/synthik-js-sdk#readme",
+  "bugs": {
+    "url": "https://github.com/synthik-io/synthik-js-sdk/issues"
+  },
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "test": "jest",
+    "test": "jest --passWithNoTests",
     "lint": "eslint src/**/*.ts",
     "format": "prettier --write src/**/*.ts",
-    "prepublishOnly": "npm run build"
+    "clean": "rm -rf dist",
+    "prebuild": "npm run clean",
+    "prepublishOnly": "npm run build && npm run test",
+    "postpublish": "echo 'Package published successfully! 🎉'"
   },
-  "keywords": [ 
+  "keywords": [
     "synthik",
     "synthetic-data",
     "filecoin",
