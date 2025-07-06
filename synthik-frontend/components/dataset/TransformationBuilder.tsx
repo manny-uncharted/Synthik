@@ -4,7 +4,6 @@ import {
   ArrowRight,
   Plus,
   Trash2,
-  Settings,
   Eye,
   EyeOff,
   AlertCircle,
