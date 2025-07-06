@@ -145,21 +145,7 @@ def main():
     os.makedirs(args.model_output_dir, exist_ok=True)
 
     # Tokenizer
-    try:
-        tokenizer = AutoTokenizer.from_pretrained(
-            args.base_model_id,
-            trust_remote_code=True
-        )
-    except ValueError as e:
-        logger.warning(
-            f"Fast tokenizer not available for {args.base_model_id}, "
-            f"retrying with use_fast=False: {e}"
-        )
-        tokenizer = AutoTokenizer.from_pretrained(
-            args.base_model_id,
-            trust_remote_code=True,
-            use_fast=False
-        )
+    tokenizer = AutoTokenizer.from_pretrained(args.base_model_id, trust_remote_code=True)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 

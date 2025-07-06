@@ -54,6 +54,7 @@ def _generate_requirements_txt_content(script_config: Dict[str, Any]) -> str:
 def _generate_dockerfile_content(script_config: Dict[str, Any]) -> str:
     """Generates the content for the Dockerfile."""
     python_version = script_config.get("hf_space_python_version", DEFAULT_PYTHON_VERSION)
+    training_script_name = script_config.get("training_script_name", "train_text_lora.py")
     return f"""
         FROM python:{python_version}-slim
 
@@ -72,7 +73,7 @@ def _generate_dockerfile_content(script_config: Dict[str, Any]) -> str:
         # Ensure pip is up-to-date and install requirements
         RUN pip install --upgrade pip && pip install --no-cache-dir -r requirements.txt
 
-        COPY train_text_lora.py .
+        COPY {training_script_name} .
         COPY train_script_wrapper.py .
 
         # The user running the CMD will now have write access to /app/outputs and HF_HOME
@@ -290,6 +291,7 @@ def _generate_train_script_wrapper_py_content(
     Generates the content for train_script_wrapper.py.
     This script runs inside the HF Space and executes the actual training script.
     """
+    training_script_name_info = training_script_name
     return """
 import os
 import subprocess
@@ -311,6 +313,7 @@ def main():
     target_model_repo_id = os.environ.get('TARGET_MODEL_REPO_ID')
     data_path = os.environ.get('DATA_PATH_FOR_SCRIPT')
     base_model_id = os.environ.get('BASE_MODEL_ID_FOR_SCRIPT')
+    training_script_name = os.environ.get('TRAINING_SCRIPT_NAME')
 
     # Validate environment
     if not hf_token_for_push:
@@ -507,13 +510,14 @@ async def submit_huggingface_training_job(
     print(f"[HuggingFaceRunner job_id={job.id}]: Preparing Space contents in temporary directory: {temp_space_dir_path_obj}")
     try:
         # 1. Copy train_text_lora.py (ensure LOCAL_TRAINING_SCRIPTS_REPO_DIR is defined)
-        source_script_path = scripts_dir_path / "train_text_lora.py"
+        script_file = job.training_script_config.get("training_script_name", "train_text_lora.py")
+        source_script_path = scripts_dir_path / script_file
         if not source_script_path.is_file():
-            return None, f"Main training script 'train_text_lora.py' not found at {source_script_path}"
-        await asyncio.to_thread(shutil.copy2, str(source_script_path), str(temp_space_dir_path_obj / "train_text_lora.py"))
+            return None, f"Main training script '{script_file}' not found at {source_script_path}"
+        await asyncio.to_thread(shutil.copy2, str(source_script_path), str(temp_space_dir_path_obj / script_file))
 
         # 2. Generate and write train_script_wrapper.py
-        wrapper_content = _generate_train_script_wrapper_py_content() # You need to define this helper
+        wrapper_content = _generate_train_script_wrapper_py_content(training_script_name=script_file) # You need to define this helper
         print(f"[HuggingFaceRunner job_id={job.id}]: Generated train_script_wrapper.py content: {wrapper_content}")
         async with aiofiles.open(temp_space_dir_path_obj / "train_script_wrapper.py", "w", encoding='utf-8') as f:
             await f.write(wrapper_content)
@@ -567,6 +571,7 @@ async def submit_huggingface_training_job(
             "TARGET_MODEL_REPO_ID": target_model_repo_id,
             "DATA_PATH_FOR_SCRIPT": hf_dataset_id_for_script, # USE THE DETERMINED HF DATASET ID
             "BASE_MODEL_ID_FOR_SCRIPT": base_model_for_script,
+            "TRAINING_SCRIPT_NAME": job.training_script_config.get("training_script_name", "train_text_lora.py"),
             # Pass hyperparameters and script_config as JSON strings
             "HYPERPARAMETERS_JSON_FOR_SCRIPT": json.dumps(job.hyperparameters or {}),
             "TRAINING_SCRIPT_CONFIG_JSON_FOR_SCRIPT": json.dumps(script_config or {}), # Contains other script settings

@@ -1,6 +1,7 @@
 import os
 import logging
 import asyncio
+from asyncio import get_running_loop
 import aiofiles
 import aios
 import uuid
@@ -12,6 +13,7 @@ from typing import Callable, Optional, Tuple, List
 from sqlalchemy import select
 
 from sqlalchemy.orm import Session, selectinload
+
 
 # Assuming your models and enums are in these locations
 import app.ai_training.models as ai_models # Use alias to avoid conflict if needed
@@ -32,8 +34,8 @@ from app.ai_training.runners.local_script_runner import execute_local_training_s
 from app.ai_training.runners.sagemaker_runner import submit_sagemaker_training_job
 from app.ai_training.runners.vertex_ai_runner import submit_vertex_ai_training_job
 from app.ai_training.runners.huggingface_runner import submit_huggingface_training_job
-from app.ai_training.models import AITrainingJob, Model
-from app.ai_training.schemas import ModelCreate
+from app.ai_training.models import AITrainingJob, Model as MLModel
+from app.ai_training.schemas import MLModelCreate
 from app.core.exceptions import NotFoundError
 from app.ai_training.utils.download import download_file
 from app.core.logger import logger
@@ -44,12 +46,12 @@ logger = logging.getLogger(__name__)
 
 
 def create_model(
-    db: Session, data: ModelCreate, user_id: str
-) -> Model:
+    db: Session, data: MLModelCreate, user_id: str
+) -> MLModel:
     """
     Create a new Model record (status=training) and return it.
     """
-    m = Model(
+    m = MLModel(
         name=data.name,
         description=data.description,
         provider=data.provider,
@@ -61,12 +63,12 @@ def create_model(
     )
     db.add(m)
     db.commit()
-    db.refresh(m)
+    db.refresh(m)   
     logger.info("model.created", model_id=m.id, by=user_id)
     return m
 
-def get_model(db: Session, model_id: str) -> Model:
-    m = db.query(Model).filter(Model.id == model_id).first()
+def get_model(db: Session, model_id: str) -> MLModel:
+    m = db.query(MLModel).filter(MLModel.id == model_id).first()
     if not m:
         raise NotFoundError(f"Model {model_id} not found")
     return m
@@ -76,10 +78,10 @@ def list_models(
     page: int = 1,
     limit: int = 20,
     search: str = None,
-) -> Tuple[List[Model], int]:
-    query = db.query(Model)
+) -> Tuple[List[MLModel], int]:
+    query = db.query(MLModel)
     if search:
-        query = query.filter(Model.name.ilike(f"%{search}%"))
+        query = query.filter(MLModel.name.ilike(f"%{search}%"))
     total = query.count()
     items = query.offset((page - 1) * limit).limit(limit).all()
     return items, total
@@ -91,7 +93,7 @@ async def submit_training_job_to_platform(job_id: str, db_provider: Callable[[],
     """
     with db_provider() as db:
         try:
-            job = db.query(ai_models.AITrainingJob).filter(ai_models.AITrainingJob.id == job_id).first()
+            job = db.query(AITrainingJob).filter(AITrainingJob.id == job_id).first()
             if not job:
                 logger.error(f"Background task (job_id: {job_id}): Job not found. Cannot submit.")
                 return
@@ -292,11 +294,11 @@ async def submit_training_job_to_platform(job_id: str, db_provider: Callable[[],
                             local_dataset_path_for_hf = Path(temp_dataset_download_dir) / temp_filename
                             print(f"[Service job_id={job.id}]: Local dataset path for Hugging Face: '{local_dataset_path_for_hf}'")
                             
-                            print(f"[Service job_id={job.id}]: Downloading dataset blob '{dataset_blob_id}' from Akave to '{local_dataset_path_for_hf}'")
+                            print(f"[Service job_id={job.id}]: Downloading dataset blob '{job.dataset_url}' from Akave to '{local_dataset_path_for_hf}'")
                             
                             # async with AkaveLinkAPI() as akave_client: # Ensure AkaveLinkAPI is correctly initialized
                             #     await akave_client.download_file(blob_id=dataset_blob_id, output_path=local_dataset_path_for_hf)
-                            await download_file(job.dataset_url, job.file_type, local_dataset_path_for_hf)
+                            download_file(job.dataset_url, job.file_type, local_dataset_path_for_hf)
 
                             if not local_dataset_path_for_hf.exists() or local_dataset_path_for_hf.stat().st_size == 0:
                                 raise FileNotFoundError(f"Downloaded dataset file '{local_dataset_path_for_hf}' is missing or empty.")
@@ -387,7 +389,7 @@ async def process_and_upload_to_hf_background(
             
             # Fetch the job with necessary related data
             stmt = select(ai_models.AITrainingJob).where(ai_models.AITrainingJob.id == job_id).options(
-                selectinload(ai_models.AITrainingJob.processed_dataset), # For model card
+                selectinload(ai_models.AITrainingJob.dataset_url), # For model card
                 selectinload(ai_models.AITrainingJob.user_credential)   # For potential cloud creds if needed
             )
             result = await db.execute(stmt)

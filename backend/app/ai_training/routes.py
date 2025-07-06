@@ -27,7 +27,7 @@ from app.core.logger import logger
 from app.core.redis import get_redis_ml_ops, get_redis_pool
 from app.core.database import get_session, get_session_with_ctx_manager
 from app.core.constants import MLOPS_ENCRYPTION_KEY, FASTAPI_BASE_URL_CAMPAIGN_API, HUGGING_FACE_HUB_TOKEN_MLOPS, AWS_ACCESS_KEY_ID_MLOPS, AWS_SECRET_ACCESS_KEY_MLOPS, AWS_REGION_MLOPS, WEBHOOK_SHARED_SECRET
-from app.ai_training.models import UserExternalServiceCredential, TrainingPlatform, AITrainingJob
+from app.ai_training.models import UserExternalServiceCredential, TrainingPlatform, AITrainingJob, Model as MLModel
 from app.core.enums.ai_training import StorageType, JobStatus, TrainingPlatform
 from app.ai_training.schemas import (
     UserExternalServiceCredentialCreate, 
@@ -35,9 +35,9 @@ from app.ai_training.schemas import (
     AITrainingJobCreate, 
     AITrainingJobResponse, 
     TrainingJobStatusUpdate,
-    ModelCreate,
-    ModelResponse,
-    ModelListResponse,
+    MLModelCreate,
+    MLModelResponse,
+    MLModelListResponse,
     TrainingJobInfo,
 )
 from app.ai_training.utils.toolkit import AkaveStorageTool, DataPreprocessorTool
@@ -77,7 +77,7 @@ ml_ops_router = APIRouter(prefix="/mlops", tags=["AI/ML Operations"])
 
 
 
-@ml_ops_router.get("/models", response_model=ModelListResponse)
+@ml_ops_router.get("/models", response_model=MLModelListResponse)
 async def read_models(
     page: int = Query(1, gt=0),
     limit: int = Query(20, gt=0, le=100),
@@ -86,15 +86,38 @@ async def read_models(
 ):
     items, total = list_models(db, page, limit, search)
     total_pages = (total + limit - 1) // limit
-    return ModelListResponse(
+    return  MLModelListResponse(
         models=items, page=page, limit=limit, total=total, totalPages=total_pages
     )
 
-@ml_ops_router.get("/{model_id}", response_model=ModelResponse)
+@ml_ops_router.get("/{model_id}", response_model=MLModelResponse)
 async def read_model(
     model_id: str, db: Session = Depends(get_db)
 ):
     return get_model(db, model_id)
+
+
+@ml_ops_router.post(
+    "/models",
+    status_code=status.HTTP_201_CREATED,
+    response_model=MLModelResponse,
+)
+async def store_trained_model(
+    payload: MLModelCreate,
+    db: Session = Depends(get_db),
+):
+    """
+    Called by your training script when a job finishes.
+    """
+    try:
+        ml_model = create_model(db, payload)
+    except Exception as e:
+        logger.error("models.create_failed", error=str(e), payload=payload.dict())
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Could not store model details."
+        )
+    return ml_model
 
 
 
@@ -287,5 +310,4 @@ async def training_job_webhook_update(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to save job update from webhook.")
 
     return db_job
-
 

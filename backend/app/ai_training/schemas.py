@@ -118,7 +118,7 @@ class AITrainingJobUpdateInternal(BaseModel):
     completed_at: Optional[datetime] = None
 
 
-class ModelBase(BaseModel):
+class MLModelBase(BaseModel):
     name: constr(min_length=1, max_length=255)
     description: Optional[str]
     provider: constr(min_length=1)
@@ -127,7 +127,7 @@ class ModelBase(BaseModel):
     training_config: Dict[str, Any]
     tags: Optional[List[str]] = []
 
-class ModelCreate(ModelBase):
+class MLModelCreate(MLModelBase):
     pass
 
 class TrainingJobInfo(BaseModel):
@@ -135,7 +135,7 @@ class TrainingJobInfo(BaseModel):
     status: str
     estimatedTime: float
 
-class ModelResponse(BaseModel):
+class MLModelResponse(BaseModel):
     id: str
     name: str
     description: Optional[str]
@@ -159,8 +159,8 @@ class ModelResponse(BaseModel):
     class Config:
         from_attributes = True
 
-class ModelListResponse(BaseModel):
-    models: List[ModelResponse]
+class MLModelListResponse(BaseModel):
+    models: List[MLModelResponse]
     page: int
     limit: int
     total: int
