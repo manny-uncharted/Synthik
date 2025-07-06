@@ -637,7 +637,7 @@ export default function CreateDatasetFlow({
   const progress = ((currentStep - 1) / (steps.length - 1)) * 100;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 pt-8">
       {/* Compact Header */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
@@ -1010,6 +1010,7 @@ export default function CreateDatasetFlow({
                   onExport={handleExport}
                   onGenerateFullDataset={handleGenerateFullDataset}
                   generationProgress={generationProgress}
+                  selectedModel={selectedModel}
                   config={{
                     name: config.name,
                     description: config.description,
@@ -1023,6 +1024,7 @@ export default function CreateDatasetFlow({
                     visibility: config.visibility,
                     rows: config.rows,
                     quality: config.quality,
+                    datasetType: config.datasetType,
                   }}
                 />
               )}

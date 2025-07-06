@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Save } from 'lucide-react';
+import Image from 'next/image';
 
 interface CreateDatasetNavigationProps {
   onSaveDraft?: () => void;
@@ -31,8 +32,8 @@ export default function CreateDatasetNavigation({
     >
       <div className="flex justify-between items-center max-w-6xl mx-auto">
         <Link href="/" className="flex items-center gap-2">
-          <div className="w-7 h-7 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg" />
-          <span className="text-lg font-medium">Synthik</span>
+          <Image src="/synthik.png" alt="Synthik Logo" width={32} height={32} />
+          <span className="text-xl font-medium">Synthik</span>
         </Link>
 
         <div className="flex items-center gap-3">

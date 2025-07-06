@@ -1,8 +1,10 @@
-import React, { useState, useCallback } from 'react';
+import { motion } from 'framer-motion';
 import {
-  Globe,
   Upload,
+  AlertTriangle,
   CheckCircle,
+  Globe,
+  Settings,
   XCircle,
   RotateCcw,
   Wallet,
@@ -10,21 +12,27 @@ import {
   Database,
   Clock,
   DollarSign,
-  Settings,
-  AlertTriangle,
 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import React, { useState, useCallback } from 'react';
+
 import { Synapse } from '@filoz/synapse-sdk';
-import { useWallets } from '@privy-io/react-auth';
-import { ethers } from 'ethers';
-import { useBalances } from '@/hooks/useBalances';
-import { usePayment } from '@/hooks/usePayment';
+import { formatUnits } from 'ethers';
 import { useProofsets } from '@/hooks/useProofsets';
 import { useDownloadRoot } from '@/hooks/useDownloadRoot';
+import { useBalances } from '@/hooks/useBalances';
+import { usePayment } from '@/hooks/usePayment';
+import MarketplaceFinalizer from './MarketplaceFinalizer';
+import { useWallets } from '@privy-io/react-auth';
+import { ethers as ethers_v5 } from 'ethers';
 import { useAccount } from 'wagmi';
-import { formatUnits } from 'viem';
 import { config } from '@/utils/config';
 import { UseBalancesResponse } from '@/utils/types';
+import { simpleEncryption } from '@/services/simple-encryption';
+
+const MARKETPLACE_ADDRESS = process.env.NEXT_PUBLIC_MARKETPLACE_ADDRESS;
+
+// Backend API endpoint
+// const BACKEND_API_URL = 'https://filecoin.bnshub.org/datasets';
 
 // Type definitions
 interface PreviewData {
@@ -71,6 +79,17 @@ interface PublishResult {
   transactionHash?: string;
   timestamp: number;
   usingCDN?: boolean;
+  encryptionInfo?: {
+    isEncrypted: boolean;
+    encryptionMethod: string;
+    keyHint: string;
+    accessRules: {
+      visibility: string;
+      creatorAddress: string;
+      datasetId: string;
+      marketplaceContract?: string;
+    };
+  };
 }
 
 interface FilecoinPublisherProps {
@@ -95,6 +114,7 @@ interface FilecoinPublisherProps {
     visibility: string;
     rows: number;
     quality: string;
+    datasetType: string;
   };
   publishProgress: PublishProgress;
   setPublishProgress: React.Dispatch<React.SetStateAction<PublishProgress>>;
@@ -104,6 +124,7 @@ interface FilecoinPublisherProps {
   setPublishResult: (result: PublishResult | null) => void;
   showPublishOptions: boolean;
   setShowPublishOptions: (show: boolean) => void;
+  selectedModel?: string;
 }
 
 export default function FilecoinPublisher({
@@ -118,6 +139,7 @@ export default function FilecoinPublisher({
   setPublishResult,
   showPublishOptions,
   setShowPublishOptions,
+  selectedModel,
 }: FilecoinPublisherProps) {
   // Use Privy for wallet connection
   const { wallets } = useWallets();
@@ -147,9 +169,92 @@ export default function FilecoinPublisher({
       : null;
 
   // Create provider and signer from Privy wallet
-  const [provider, setProvider] = useState<ethers.BrowserProvider | null>(null);
-  const [signer, setSigner] = useState<ethers.JsonRpcSigner | null>(null);
+  const [provider, setProvider] = useState<ethers_v5.BrowserProvider | null>(
+    null
+  );
+  const [signer, setSigner] = useState<ethers_v5.JsonRpcSigner | null>(null);
   const [showStorageManager, setShowStorageManager] = useState(false);
+
+  // Calculate file size for the dataset
+  const calculateFileSize = useCallback(() => {
+    if (!data) return 0;
+
+    const metadataJson = JSON.stringify({
+      name: config.name,
+      description: config.description,
+      schema: config.schema,
+      totalRows: data.totalRows,
+      format: config.format,
+      license: config.license,
+      visibility: config.visibility,
+      generationTime: data.generationTime,
+      ...(data.tokensUsed && { tokensUsed: data.tokensUsed }),
+      ...(data.cost && { generationCost: data.cost }),
+      version: '1.0.0',
+      timestamp: Date.now(),
+    });
+
+    const serializedData = serializeDataByFormat(data.rows, config.format);
+    return new Blob([metadataJson]).size + new Blob([serializedData]).size;
+  }, [data, config]);
+
+  // Function to serialize data based on the selected format
+  const serializeDataByFormat = useCallback(
+    (
+      rows: Record<string, string | number | boolean | Date | object>[],
+      format: string
+    ): string => {
+      switch (format.toLowerCase()) {
+        case 'csv':
+          return convertToCSV(rows);
+        case 'json':
+          return JSON.stringify(rows);
+        case 'parquet':
+          // For now, fallback to JSON since parquet requires binary handling
+          return JSON.stringify(rows);
+        default:
+          return JSON.stringify(rows);
+      }
+    },
+    []
+  );
+
+  // Helper function to convert rows to CSV format
+  const convertToCSV = useCallback(
+    (
+      rows: Record<string, string | number | boolean | Date | object>[]
+    ): string => {
+      if (!rows || rows.length === 0) return '';
+
+      // Get headers from the first row
+      const headers = Object.keys(rows[0]);
+
+      // Create CSV header row
+      const csvHeaders = headers.join(',');
+
+      // Create CSV data rows
+      const csvRows = rows.map((row) => {
+        return headers
+          .map((header) => {
+            const value = row[header];
+            // Handle values that might contain commas or quotes
+            if (
+              typeof value === 'string' &&
+              (value.includes(',') ||
+                value.includes('"') ||
+                value.includes('\n'))
+            ) {
+              return `"${value.replace(/"/g, '""')}"`;
+            }
+            return value;
+          })
+          .join(',');
+      });
+
+      return [csvHeaders, ...csvRows].join('\n');
+    },
+    []
+  );
 
   // Initialize provider and signer when wallet is available
   React.useEffect(() => {
@@ -157,7 +262,9 @@ export default function FilecoinPublisher({
       const initWallet = async () => {
         try {
           const ethereumProvider = await wallet.getEthereumProvider();
-          const ethersProvider = new ethers.BrowserProvider(ethereumProvider);
+          const ethersProvider = new ethers_v5.BrowserProvider(
+            ethereumProvider
+          );
           const ethersSigner = await ethersProvider.getSigner();
 
           setProvider(ethersProvider);
@@ -288,6 +395,47 @@ ${
         retryCount: 0,
       });
 
+      setPublishProgress((prev) => ({
+        ...prev,
+        message: 'Preparing dataset for upload...',
+        metadataProgress: 5,
+      }));
+
+      const datasetId = `dataset-${Date.now()}`;
+
+      // Serialize preview data (unencrypted)
+      const previewData = serializeDataByFormat(data.rows, config.format);
+
+      // Serialize full dataset and encrypt if needed
+      const fullDataSerialized = fullDataset
+        ? serializeDataByFormat(fullDataset.rows, config.format)
+        : previewData;
+
+      // Always encrypt the full dataset (regardless of visibility)
+      // Access is granted after purchase through smart contract validation
+      setPublishProgress((prev) => ({
+        ...prev,
+        message: 'Encrypting full dataset...',
+        metadataProgress: 8,
+      }));
+
+      const encryptedFullDataset = await simpleEncryption.encryptDataset(
+        fullDataSerialized,
+        {
+          visibility: config.visibility as 'public' | 'private' | 'restricted',
+          creatorAddress: address,
+          datasetId: datasetId,
+          marketplaceContract: MARKETPLACE_ADDRESS,
+        },
+        signer
+      );
+
+      setPublishProgress((prev) => ({
+        ...prev,
+        message: 'Setting up storage...',
+        metadataProgress: 10,
+      }));
+
       // Try CDN first, then fallback to non-CDN
       let synapse;
       let storageService;
@@ -298,7 +446,7 @@ ${
         setPublishProgress((prev) => ({
           ...prev,
           message: 'Attempting to use CDN-enabled storage...',
-          metadataProgress: 10,
+          metadataProgress: 20,
         }));
 
         synapse = await Synapse.create({
@@ -323,7 +471,7 @@ ${
                 setPublishProgress((prev) => ({
                   ...prev,
                   message: 'Using CDN-enabled storage provider...',
-                  metadataProgress: 20,
+                  metadataProgress: 30,
                 }));
               },
             },
@@ -338,7 +486,7 @@ ${
                 setPublishProgress((prev) => ({
                   ...prev,
                   message: 'CDN-enabled storage provider selected...',
-                  metadataProgress: 15,
+                  metadataProgress: 25,
                 }));
               },
               onProofSetResolved: (info) => {
@@ -350,7 +498,7 @@ ${
                 setPublishProgress((prev) => ({
                   ...prev,
                   message: 'CDN proof set configured...',
-                  metadataProgress: 25,
+                  metadataProgress: 35,
                 }));
               },
             },
@@ -446,7 +594,7 @@ ${
         }
       }
 
-      // Step 1: Upload metadata
+      // Step 1: Upload metadata (unencrypted, but include encryption info for full dataset)
       setPublishProgress((prev) => ({
         ...prev,
         stage: 'uploading-metadata',
@@ -457,13 +605,22 @@ ${
         name: config.name,
         description: config.description,
         schema: config.schema,
-        totalRows: data.totalRows,
+        totalRows: fullDataset?.totalRows || data.totalRows,
         format: config.format,
         license: config.license,
         visibility: config.visibility,
-        generationTime: data.generationTime,
+        generationTime: fullDataset?.generationTime || data.generationTime,
         ...(data.tokensUsed && { tokensUsed: data.tokensUsed }),
         ...(data.cost && { generationCost: data.cost }),
+
+        // Always include encryption metadata since full dataset is always encrypted
+        encryption: {
+          isEncrypted: true,
+          encryptionMethod: encryptedFullDataset.encryptionMethod,
+          keyHint: encryptedFullDataset.keyHint,
+          accessRules: encryptedFullDataset.accessRules,
+        },
+
         version: '1.0.0',
         timestamp: Date.now(),
       });
@@ -476,98 +633,98 @@ ${
           setPublishProgress((prev) => ({
             ...prev,
             metadataProgress: 80,
-            message: 'Metadata uploaded successfully!',
+            message: 'Encrypted dataset metadata uploaded successfully!',
           }));
         },
         onRootAdded: async () => {
           setPublishProgress((prev) => ({
             ...prev,
             metadataProgress: 90,
-            message: 'Adding metadata to your proof set...',
+            message: 'Adding encrypted dataset metadata to your proof set...',
           }));
         },
         onRootConfirmed: () => {
           setPublishProgress((prev) => ({
             ...prev,
             metadataProgress: 100,
-            message: 'Metadata confirmed on Filecoin!',
+            message: 'Encrypted dataset metadata confirmed on Filecoin!',
           }));
         },
       });
 
       const metadataCID = metadataResult.commp.toString();
 
-      // Step 2: Upload data
+      // Step 2: Upload preview data (unencrypted)
       setPublishProgress((prev) => ({
         ...prev,
         stage: 'uploading-data',
-        message: 'Uploading dataset content to Filecoin...',
+        message: 'Uploading preview data to Filecoin...',
       }));
 
-      const dataJson = JSON.stringify(data.rows);
-      const dataBytes = new TextEncoder().encode(dataJson);
+      const previewDataBytes = new TextEncoder().encode(previewData);
 
-      const dataResult = await storageService.upload(dataBytes, {
+      const previewResult = await storageService.upload(previewDataBytes, {
         onUploadComplete: () => {
           setPublishProgress((prev) => ({
             ...prev,
-            dataProgress: 80,
-            message: 'Dataset uploaded successfully!',
+            dataProgress: 40,
+            message: 'Preview data uploaded successfully!',
           }));
         },
         onRootAdded: async () => {
           setPublishProgress((prev) => ({
             ...prev,
-            dataProgress: 90,
-            message: 'Adding dataset to your proof set...',
+            dataProgress: 50,
+            message: 'Adding preview data to your proof set...',
           }));
         },
         onRootConfirmed: () => {
           setPublishProgress((prev) => ({
             ...prev,
-            dataProgress: 100,
-            message: 'Dataset confirmed on Filecoin!',
+            dataProgress: 60,
+            message: 'Preview data confirmed on Filecoin!',
           }));
         },
       });
 
-      const dataCID = dataResult.commp.toString();
+      const previewDataCID = previewResult.commp.toString();
 
-      // Step 2: Upload data (both preview and full if available)
-      const previewDataCID = dataCID;
+      // Step 3: Upload full dataset (always encrypted)
       let fullDatasetCID: string | undefined;
 
-      if (fullDataset) {
+      if (fullDataset || encryptedFullDataset) {
         setPublishProgress((prev) => ({
           ...prev,
           stage: 'uploading-data',
-          message: 'Uploading full dataset content to Filecoin...',
-          dataProgress: 0,
+          message: 'Uploading encrypted full dataset to Filecoin...',
+          dataProgress: 60,
         }));
 
-        const fullDataJson = JSON.stringify(fullDataset.rows);
-        const fullDataBytes = new TextEncoder().encode(fullDataJson);
+        // Always use encrypted data for full dataset
+        const fullDataToUpload = encryptedFullDataset.encryptedData;
+
+        const fullDataBytes = new TextEncoder().encode(fullDataToUpload);
 
         const fullDataResult = await storageService.upload(fullDataBytes, {
           onUploadComplete: () => {
             setPublishProgress((prev) => ({
               ...prev,
               dataProgress: 80,
-              message: 'Full dataset uploaded successfully!',
+              message: 'Encrypted full dataset uploaded successfully!',
             }));
           },
           onRootAdded: async () => {
             setPublishProgress((prev) => ({
               ...prev,
               dataProgress: 90,
-              message: 'Adding full dataset to your proof set...',
+              message: 'Adding encrypted full dataset to your proof set...',
             }));
           },
           onRootConfirmed: () => {
             setPublishProgress((prev) => ({
               ...prev,
               dataProgress: 100,
-              message: 'Full dataset confirmed on Filecoin!',
+              message: 'Encrypted full dataset confirmed on Filecoin!',
             }));
           },
         });
@@ -575,21 +732,30 @@ ${
         fullDatasetCID = fullDataResult.commp.toString();
       }
 
+      // Create result with encryption info (always encrypted)
       const result: PublishResult = {
         metadataCID,
         previewDataCID,
         fullDataCID: fullDatasetCID,
         timestamp: Date.now(),
         usingCDN,
+        // Always store encryption info for later decryption
+        encryptionInfo: {
+          isEncrypted: true,
+          encryptionMethod: encryptedFullDataset.encryptionMethod,
+          keyHint: encryptedFullDataset.keyHint,
+          accessRules: encryptedFullDataset.accessRules,
+        },
       };
 
       setPublishResult(result);
+
       setPublishProgress((prev) => ({
         ...prev,
         stage: 'completed',
         message: usingCDN
-          ? 'Dataset published successfully to Filecoin with CDN support!'
-          : 'Dataset published successfully to Filecoin!',
+          ? 'Dataset published successfully to Filecoin with CDN support! (Full dataset encrypted - purchase required for access)'
+          : 'Dataset published successfully to Filecoin! (Full dataset encrypted - purchase required for access)',
       }));
     } catch (error) {
       console.error('Publishing failed:', error);
@@ -667,9 +833,9 @@ ${
           timestamp: Date.now(),
         });
 
-        const dataJson = JSON.stringify(data.rows);
+        const serializedData = serializeDataByFormat(data.rows, config.format);
         const totalSize =
-          new Blob([metadataJson]).size + new Blob([dataJson]).size;
+          new Blob([metadataJson]).size + new Blob([serializedData]).size;
 
         // Get real storage cost estimate from Synapse
         const pandoraService = new (
@@ -731,9 +897,9 @@ ${
           timestamp: Date.now(),
         });
 
-        const dataJson = JSON.stringify(data.rows);
+        const serializedData = serializeDataByFormat(data.rows, config.format);
         const totalSize =
-          new Blob([metadataJson]).size + new Blob([dataJson]).size;
+          new Blob([metadataJson]).size + new Blob([serializedData]).size;
 
         // Very rough estimate based on size
         const storageFee = Math.max(0.001, (totalSize / 1024 / 1024) * 0.01); // ~0.01 USDFC per MB
@@ -1382,6 +1548,32 @@ ${
             </div>
           </div>
         </motion.div>
+      )}
+
+      {/* Marketplace Finalizer */}
+      {publishProgress.stage === 'completed' && publishResult && data && (
+        <div className="mt-6">
+          <MarketplaceFinalizer
+            publishResult={publishResult}
+            config={config}
+            data={{
+              totalRows: data.totalRows,
+              generationTime: data.generationTime,
+              tokensUsed: data.tokensUsed,
+              cost: data.cost,
+              fileSize: calculateFileSize(),
+            }}
+            fullDataset={
+              fullDataset
+                ? {
+                    ...fullDataset,
+                    fileSize: calculateFileSize(),
+                  }
+                : null
+            }
+            selectedModel={selectedModel}
+          />
+        </div>
       )}
     </div>
   );

@@ -7,6 +7,21 @@ import {
 } from '../../typechain-types';
 import * as fs from 'fs';
 
+// Standard ERC20 interface for USDFC token interactions
+const ERC20_ABI = [
+  'function balanceOf(address owner) view returns (uint256)',
+  'function allowance(address owner, address spender) view returns (uint256)',
+  'function approve(address spender, uint256 amount) returns (bool)',
+  'function transfer(address to, uint256 amount) returns (bool)',
+  'function transferFrom(address from, address to, uint256 amount) returns (bool)',
+  'function decimals() view returns (uint8)',
+  'function symbol() view returns (string)',
+  'function name() view returns (string)',
+  'function totalSupply() view returns (uint256)',
+  'event Transfer(address indexed from, address indexed to, uint256 value)',
+  'event Approval(address indexed owner, address indexed spender, uint256 value)',
+];
+
 /**
  * Demo Script 3: Marketplace Flow
  *
@@ -51,6 +66,24 @@ async function main() {
     'DatasetMarketplace',
     deploymentInfo.contracts.DatasetMarketplace
   )) as DatasetMarketplace;
+
+  // Connect to USDFC token contract
+  const usdcToken = new ethers.Contract(
+    deploymentInfo.usdcToken,
+    ERC20_ABI,
+    seller
+  ) as any; // Using any to avoid type issues with dynamic ERC20 interface
+
+  console.log('📋 Connected to contracts:');
+  console.log(
+    '- ProvenanceManager:',
+    deploymentInfo.contracts.ProvenanceManager
+  );
+  console.log(
+    '- DatasetMarketplace:',
+    deploymentInfo.contracts.DatasetMarketplace
+  );
+  console.log('- USDFC Token:', deploymentInfo.usdcToken);
 
   try {
     // Step 1: Create a dataset to sell (as seller)
@@ -98,17 +131,29 @@ async function main() {
     );
 
     console.log(`Found ${listingEvents.length} marketplace listings:`);
-    for (let i = 0; i < Math.min(listingEvents.length, 3); i++) {
-      const event = listingEvents[i];
-      if (event.args) {
-        const datasetInfo = await provenanceManager.getDataset(
-          event.args.datasetId
+
+    // Note: datasetId is indexed in events, so we get a hash instead of the string
+    // We'll show the most recent listing (our own dataset) with known datasetId
+    if (listingEvents.length > 0) {
+      const latestEvent = listingEvents[listingEvents.length - 1];
+      if (latestEvent.args) {
+        console.log(`- ${datasetId}: Medical Diagnosis Patterns Dataset`);
+        console.log(
+          `  Price: ${ethers.formatEther(latestEvent.args.price)} USDFC`
         );
-        console.log(`- ${event.args.datasetId}: ${datasetInfo.name}`);
-        console.log(`  Price: ${ethers.formatEther(event.args.price)} USDFC`);
-        console.log(`  License Type: ${event.args.licenseType}`);
+        console.log(`  License Type: ${latestEvent.args.licenseType}`);
         console.log('---');
       }
+
+      // Show total marketplace activity
+      console.log(`Total marketplace listings: ${listingEvents.length}`);
+      if (listingEvents.length > 1) {
+        console.log(
+          '(Previous listings available but datasetId is hashed in events)'
+        );
+      }
+    } else {
+      console.log('No marketplace listings found');
     }
 
     // Step 4: Check Dataset Details Before Purchase
@@ -131,33 +176,130 @@ async function main() {
       console.log('⚠️ Generation config not available');
     }
 
-    // Step 5: Purchase Dataset License (simulated)
-    console.log('\n💳 Step 5: Purchasing Dataset License...');
+    // Step 5: Purchase Dataset License with USDFC Token
+    console.log('\n💳 Step 5: Purchasing Dataset License with USDFC...');
+
+    // Get dataset pricing info
+    const pricing = await datasetMarketplace.datasetPricing(datasetId);
+    const datasetPrice = pricing.price;
+    console.log(`Dataset price: ${ethers.formatEther(datasetPrice)} USDFC`);
+
+    // Check buyer's USDFC balance
+    const buyerBalance = await usdcToken.balanceOf(buyer.address);
     console.log(
-      '(Note: In production, buyer would need USDFC tokens and approval)'
+      `Buyer's USDFC balance: ${ethers.formatEther(buyerBalance)} USDFC`
     );
 
-    // In a real scenario, the buyer would:
-    // 1. Have USDFC tokens
-    // 2. Approve the marketplace to spend tokens
-    // 3. Call purchaseDataset
-
-    try {
-      // This will fail without actual USDFC tokens, but shows the flow
-      const purchaseTx = await datasetMarketplace
-        .connect(buyer)
-        .purchaseDataset(
-          datasetId,
-          'Commercial usage for model training' // usageTerms
-        );
-      await purchaseTx.wait();
-      console.log('✅ Dataset license purchased successfully!');
-    } catch (error) {
-      console.log('⚠️ Purchase failed (expected without USDFC tokens)');
+    // Check if buyer has sufficient balance
+    if (buyerBalance < datasetPrice) {
+      console.log('⚠️ Insufficient USDFC balance for purchase');
       console.log('In production, buyer would need to:');
-      console.log('1. Obtain USDFC tokens');
-      console.log('2. Approve marketplace contract to spend tokens');
-      console.log('3. Call purchaseDataset function');
+      console.log('1. Obtain USDFC tokens through exchange or faucet');
+      console.log('2. Ensure sufficient balance for dataset purchase');
+      console.log('Skipping purchase due to insufficient funds...');
+    } else {
+      try {
+        // Step 5a: Check current allowance
+        const currentAllowance = await usdcToken.allowance(
+          buyer.address,
+          deploymentInfo.contracts.DatasetMarketplace
+        );
+        console.log(
+          `Current allowance: ${ethers.formatEther(currentAllowance)} USDFC`
+        );
+
+        // Step 5b: Approve marketplace to spend USDFC tokens
+        if (currentAllowance < datasetPrice) {
+          console.log('📝 Approving marketplace to spend USDFC tokens...');
+          const approveTx = await usdcToken
+            .connect(buyer)
+            .approve(deploymentInfo.contracts.DatasetMarketplace, datasetPrice);
+          await approveTx.wait();
+          console.log('✅ Marketplace approved to spend USDFC tokens');
+
+          // Verify approval
+          const newAllowance = await usdcToken.allowance(
+            buyer.address,
+            deploymentInfo.contracts.DatasetMarketplace
+          );
+          console.log(
+            `New allowance: ${ethers.formatEther(newAllowance)} USDFC`
+          );
+        } else {
+          console.log('✅ Marketplace already has sufficient allowance');
+        }
+
+        // Step 5c: Purchase dataset license
+        console.log('🛒 Executing dataset purchase...');
+        const purchaseTx = await datasetMarketplace
+          .connect(buyer)
+          .purchaseDataset(
+            datasetId,
+            'Commercial usage for model training and research purposes'
+          );
+
+        console.log('⏳ Waiting for transaction confirmation...');
+        const receipt = await purchaseTx.wait();
+
+        if (!receipt) {
+          throw new Error('Transaction receipt is null');
+        }
+
+        console.log('✅ Dataset license purchased successfully!');
+        console.log(`Transaction hash: ${receipt.hash}`);
+        console.log(`Gas used: ${receipt.gasUsed.toString()}`);
+
+        // Step 5d: Verify purchase
+        console.log('🔍 Verifying purchase...');
+        const hasLicense = await datasetMarketplace.hasValidLicense(
+          datasetId,
+          buyer.address
+        );
+        console.log(`Buyer has valid license: ${hasLicense}`);
+
+        // Check updated balances
+        const newBuyerBalance = await usdcToken.balanceOf(buyer.address);
+        console.log(
+          `Buyer's new USDFC balance: ${ethers.formatEther(
+            newBuyerBalance
+          )} USDFC`
+        );
+        console.log(
+          `Amount spent: ${ethers.formatEther(
+            buyerBalance - newBuyerBalance
+          )} USDFC`
+        );
+
+        // Get license details
+        const userLicenses = await datasetMarketplace.getUserLicenses(
+          buyer.address
+        );
+        if (userLicenses.length > 0) {
+          const latestLicense = userLicenses[userLicenses.length - 1];
+          console.log('📄 License details:');
+          console.log(`- Dataset ID: ${latestLicense.datasetId}`);
+          console.log(`- License Type: ${latestLicense.licenseType}`);
+          console.log(
+            `- Price Paid: ${ethers.formatEther(latestLicense.pricePaid)} USDFC`
+          );
+          console.log(
+            `- Purchased At: ${new Date(
+              Number(latestLicense.purchasedAt) * 1000
+            ).toISOString()}`
+          );
+          console.log(`- Usage Terms: ${latestLicense.usageTerms}`);
+        }
+      } catch (error: any) {
+        console.error('❌ Purchase failed:', error.message);
+        if (error.data) {
+          console.error('Error data:', error.data);
+        }
+        console.log('Common issues:');
+        console.log('- Insufficient USDFC balance');
+        console.log('- Insufficient allowance for marketplace');
+        console.log('- Dataset not available for purchase');
+        console.log('- Maximum licenses already issued');
+      }
     }
 
     // Step 6: Track Sales Analytics
@@ -178,15 +320,14 @@ async function main() {
     let totalRevenue = BigInt(0);
     let sellerSales = 0;
 
+    // Note: Since datasetId is indexed in events, we get hashes instead of strings
+    // For this demo, we'll count all purchase events for our seller
     for (const event of purchaseEvents) {
       if (event.args) {
-        const eventDataset = await provenanceManager.getDataset(
-          event.args.datasetId
-        );
-        if (eventDataset.creator === seller.address) {
-          totalRevenue += event.args.amount;
-          sellerSales++;
-        }
+        // In a real application, you'd need to track dataset IDs differently
+        // or use non-indexed parameters for string values
+        totalRevenue += event.args.amount;
+        sellerSales++;
       }
     }
 
@@ -199,6 +340,7 @@ async function main() {
     console.log('\n📜 Step 7: License Management...');
 
     // Check active licenses for the dataset
+    // Note: We can still filter by indexed datasetId for this specific dataset
     const licenseFilter = datasetMarketplace.filters.LicenseIssued(datasetId);
     const licenseEvents = await datasetMarketplace.queryFilter(
       licenseFilter,
@@ -249,12 +391,14 @@ async function main() {
     let totalListings = 0;
     let totalVolume = BigInt(0);
 
+    // Count total listings
     for (const event of listingEvents) {
       if (event.args) {
         totalListings++;
       }
     }
 
+    // Calculate total volume from purchases
     for (const event of purchaseEvents) {
       if (event.args) {
         totalVolume += event.args.amount;
@@ -278,18 +422,23 @@ async function main() {
     console.log('Marketplace features demonstrated:');
     console.log('✅ Dataset listing with pricing');
     console.log('✅ Marketplace browsing and discovery');
+    console.log('✅ USDFC token integration');
+    console.log('✅ Token approval and spending');
     console.log('✅ License purchasing flow');
+    console.log('✅ Purchase verification');
     console.log('✅ Royalty distribution system');
     console.log('✅ Dynamic pricing updates');
     console.log('✅ Sales analytics and tracking');
     console.log('✅ License management');
     console.log('');
     console.log('Key benefits:');
+    console.log('- USDFC token-based payments');
     console.log('- Transparent pricing and licensing');
     console.log('- Automated royalty distribution');
     console.log('- Comprehensive sales analytics');
     console.log('- Flexible license types');
     console.log('- Creator monetization');
+    console.log('- Secure token approvals');
   } catch (error: any) {
     console.error('❌ Demo failed:', error.message);
     if (error.data) {

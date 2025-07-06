@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Star, Lock, Database, User, Clock, ArrowUpRight } from 'lucide-react';
+import { Star, Lock, User, Clock, ArrowUpRight } from 'lucide-react';
 import Link from 'next/link';
 
 interface DatasetCardProps {
@@ -7,6 +7,7 @@ interface DatasetCardProps {
   title: string;
   description: string;
   category: string;
+  tags?: string[];
   size: string;
   downloads: number;
   views: number;
@@ -22,7 +23,8 @@ export default function DatasetCard({
   id = '1',
   title,
   description,
-  category,
+  // category,
+  tags = [],
   size,
   downloads,
   views,
@@ -76,12 +78,31 @@ export default function DatasetCard({
                 {description}
               </p>
 
-              <div className="flex items-center gap-2">
+              {/* <div className="flex items-center gap-2">
                 <Database className="w-4 h-4 text-gray-500" />
                 <span className="text-sm font-medium text-gray-700">
                   {category}
                 </span>
-              </div>
+              </div> */}
+
+              {/* Tags */}
+              {tags && tags.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {tags.slice(0, 3).map((tag, index) => (
+                    <span
+                      key={index}
+                      className="px-2 py-1 bg-indigo-50 text-indigo-600 text-xs rounded-full font-medium"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                  {tags.length > 3 && (
+                    <span className="px-2 py-1 bg-gray-100 text-gray-500 text-xs rounded-full font-medium">
+                      +{tags.length - 3}
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Price */}

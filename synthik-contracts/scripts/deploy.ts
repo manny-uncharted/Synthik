@@ -121,6 +121,20 @@ async function main() {
     await tx3.wait();
     console.log('✅ TREASURY_ROLE granted');
 
+    await new Promise((resolve) => setTimeout(resolve, 5000));
+
+    // Grant ADMIN_ROLE to marketplace contract in DatasetRegistry
+    console.log('Granting ADMIN_ROLE to marketplace in DatasetRegistry...');
+    const ADMIN_ROLE = hre.ethers.keccak256(
+      hre.ethers.toUtf8Bytes('ADMIN_ROLE')
+    );
+    const tx4 = await datasetRegistry.grantRole(
+      ADMIN_ROLE,
+      datasetMarketplaceAddress
+    );
+    await tx4.wait();
+    console.log('✅ ADMIN_ROLE granted to marketplace in DatasetRegistry');
+
     // 6. Create test dataset for demonstration
     console.log('\n6. Creating test dataset...');
     try {
@@ -189,10 +203,11 @@ async function main() {
     console.log('DatasetMarketplace:   ', datasetMarketplaceAddress);
     console.log('AutoAccessManager:    ', autoAccessManagerAddress);
     console.log('');
-    console.log('🔑 Roles Granted to Deployer:');
-    console.log('- VERIFIER_ROLE (ProvenanceManager)');
-    console.log('- CURATOR_ROLE (DatasetRegistry)');
-    console.log('- TREASURY_ROLE (DatasetMarketplace)');
+    console.log('🔑 Roles Granted:');
+    console.log('- VERIFIER_ROLE (ProvenanceManager) → Deployer');
+    console.log('- CURATOR_ROLE (DatasetRegistry) → Deployer');
+    console.log('- TREASURY_ROLE (DatasetMarketplace) → Deployer');
+    console.log('- ADMIN_ROLE (DatasetRegistry) → Marketplace Contract');
     console.log('');
     console.log('📊 Test Dataset Created:');
     console.log('- Dataset ID: test-financial-dataset');

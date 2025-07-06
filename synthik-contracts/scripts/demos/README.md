@@ -124,6 +124,31 @@ npm run demo:lineage
 - Data integrity verification
 - Comprehensive audit trails
 
+### 5. Transformation & Anonymization Flow (`05-transformation-anonymization-flow.ts`)
+
+**Purpose:** Demonstrates data transformation and privacy protection capabilities
+
+**Features:**
+
+- Transform and anonymize sensitive datasets
+- Apply privacy-preserving techniques
+- Track transformation lineage
+- Verify anonymization quality
+- Maintain data utility while protecting privacy
+
+**Run:**
+
+```bash
+npm run demo:transform
+```
+
+**What you'll see:**
+
+- Data transformation processes
+- Privacy protection techniques
+- Anonymization quality metrics
+- Transformation lineage tracking
+
 ## Running All Demos
 
 To run all demos in sequence:
@@ -132,7 +157,7 @@ To run all demos in sequence:
 npm run demo:all
 ```
 
-This will execute all four demo scripts one after another, providing a complete tour of the Synthik system.
+This will execute all demo scripts one after another, providing a complete tour of the Synthik system.
 
 ## Demo Data
 
@@ -144,6 +169,7 @@ Each demo script creates sample datasets with unique IDs based on timestamps. Th
 2. **Medical Diagnosis Patterns** (Marketplace demo)
 3. **Financial News & Market Data** (Lineage demo)
 4. **Enhanced Financial Sentiment** (Lineage demo - derived)
+5. **Anonymized Healthcare Records** (Transformation demo)
 
 ## Understanding the Output
 
@@ -189,6 +215,12 @@ Final status and next steps for each demo
 - Immutable provenance records
 - Cryptographic proof of data authenticity
 
+### Privacy Protection
+
+- Data anonymization and transformation
+- Privacy-preserving synthetic data generation
+- Compliance with data protection regulations
+
 ## Troubleshooting
 
 ### Common Issues:
@@ -208,8 +240,13 @@ Final status and next steps for each demo
    - Warnings are expected for role-restricted operations
 
 4. **Marketplace purchase failures**
+
    - Expected without actual USDFC tokens
    - Demonstrates the purchase flow structure
+
+5. **No listings found**
+   - Run the marketplace demo first to create listings
+   - Use `npm run demo:marketplace` before `npm run demo:listings`
 
 ## Next Steps
 
@@ -224,6 +261,8 @@ After running the demos:
 4. **Set up USDFC tokens** - For real marketplace transactions
 
 5. **Configure access rules** - Set up automatic access rules for your use cases
+
+6. **Analyze marketplace data** - Use the listings script to monitor market activity
 
 ## Contract Addresses
 
