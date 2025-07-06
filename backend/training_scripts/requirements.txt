@@ -1,5 +1,9 @@
 scikit-learn
 pandas
+transformers>=4.41.2
+accelerate>=0.30.1
+bitsandbytes>=0.43.1
+torch>=2.1.0
 # datasets and transformers are usually part of HF/PyTorch SageMaker images
 # but add them if you need a very specific version not in the image
 # datasets==2.14.5 

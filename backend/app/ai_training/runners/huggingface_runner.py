@@ -35,12 +35,12 @@ def _generate_requirements_txt_content(script_config: Dict[str, Any]) -> str:
     """Generates the content for requirements.txt."""
     return f"""
         numpy<2.0
-        transformers=={script_config.get("transformers_version", DEFAULT_TRANSFORMERS_VERSION)}
+        transformers>={script_config.get("transformers_version", DEFAULT_TRANSFORMERS_VERSION)}
         peft=={script_config.get("peft_version", DEFAULT_PEFT_VERSION)}
-        torch=={script_config.get("torch_version", DEFAULT_TORCH_VERSION)}
+        torch>={script_config.get("torch_version", DEFAULT_TORCH_VERSION)}
         datasets=={script_config.get("datasets_version", DEFAULT_DATASETS_VERSION)}
-        accelerate=={script_config.get("accelerate_version", DEFAULT_ACCELERATE_VERSION)}
-        bitsandbytes=={script_config.get("bitsandbytes_version", DEFAULT_BITSNBYTES_VERSION)}
+        accelerate>={script_config.get("accelerate_version", DEFAULT_ACCELERATE_VERSION)}
+        bitsandbytes>={script_config.get("bitsandbytes_version", DEFAULT_BITSNBYTES_VERSION)}
         huggingface_hub>=0.19.0
         scipy
         hf_transfer
@@ -185,103 +185,7 @@ def _generate_readme_md_content(
     """
     return yaml_config + readme_body
 
-# def _generate_train_script_wrapper_py_content() -> str:
-#     """
-#     Generates the content for train_script_wrapper.py.
-#     This script runs inside the HF Space and executes the actual training script.
-#     """
-#     return """
-# import os
-# import subprocess
-# import json
-# import logging
-# from huggingface_hub import HfApi, create_repo, upload_folder
 
-# logging.basicConfig(
-#     level=logging.INFO,
-#     format='%(asctime)s - %(levelname)s - %(name)s - %(message)s'
-# )
-# logger = logging.getLogger("TrainingWrapper")
-
-# def main():
-#     logger.info("Starting training script wrapper in Hugging Face Space.")
-
-#     hf_token_for_push = os.environ.get('HF_TOKEN_FOR_PUSH')
-#     if not hf_token_for_push:
-#         logger.error("HF_TOKEN_FOR_PUSH secret not found. Cannot upload results.")
-#         exit(1)
-
-#     target_model_repo_id = os.environ.get('TARGET_MODEL_REPO_ID')
-#     if not target_model_repo_id:
-#         logger.error("TARGET_MODEL_REPO_ID environment variable not found.")
-#         exit(1)
-
-#     data_path = os.environ.get('DATA_PATH_FOR_SCRIPT')
-#     base_model_id = os.environ.get('BASE_MODEL_ID_FOR_SCRIPT')
-
-#     if not data_path or not base_model_id:
-#         logger.error("DATA_PATH_FOR_SCRIPT or BASE_MODEL_ID_FOR_SCRIPT env vars missing.")
-#         exit(1)
-
-#     hyperparameters_json_str = os.getenv('HYPERPARAMETERS_JSON_FOR_SCRIPT', '{}')
-#     training_script_config_json_str = os.getenv('TRAINING_SCRIPT_CONFIG_JSON_FOR_SCRIPT', '{}')
-
-#     model_output_dir = "/app/outputs"
-#     os.makedirs(model_output_dir, exist_ok=True)
-
-#     cmd = [
-#         "python", "train_text_lora.py",
-#         "--data_path", data_path,
-#         "--model_output_dir", model_output_dir,
-#         "--base_model_id", base_model_id,
-#         "--hyperparameters_json", hyperparameters_json_str,
-#         "--training_script_config_json", training_script_config_json_str,
-#         # Add --runner_environment huggingface if train_text_lora.py uses it
-#         "--runner_environment", "huggingface"
-#     ]
-
-#     logger.info(f"Constructed training command: {' '.join(cmd)}")
-#     logger.info(f"Hyperparameters JSON for script: {hyperparameters_json_str}")
-#     logger.info(f"Training Script Config JSON for script: {training_script_config_json_str}")
-
-#     logger.info("Executing train_text_lora.py...")
-#     # Stream stdout/stderr directly for Space logs
-#     process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
-
-#     if process.stdout:
-#         for line in iter(process.stdout.readline, ''):
-#             logger.info(line.strip()) # Log each line as it comes
-#         process.stdout.close()
-    
-#     return_code = process.wait()
-
-#     if return_code == 0:
-#         logger.info("Training script completed successfully.")
-#         logger.info(f"Uploading model outputs from {model_output_dir} to HF Hub repository: {target_model_repo_id}")
-        
-#         try:
-#             api = HfApi(token=hf_token_for_push)
-#             # Create target repo if it doesn't exist. Privacy should be handled by the runner ideally.
-#             create_repo(target_model_repo_id, token=hf_token_for_push, repo_type="model", exist_ok=True)
-            
-#             upload_folder(
-#                 folder_path=model_output_dir,
-#                 repo_id=target_model_repo_id,
-#                 repo_type="model",
-#                 commit_message=f"Job completed: Upload fine-tuned LoRA adapter and artifacts from Space.",
-#                 token=hf_token_for_push
-#             )
-#             logger.info(f"Successfully uploaded artifacts to Hugging Face Hub model repo: {target_model_repo_id}")
-#         except Exception as e:
-#             logger.error(f"Failed to upload results to {target_model_repo_id}: {e}", exc_info=True)
-#             exit(1) # Consider upload failure as a job failure
-#     else:
-#         logger.error(f"Training script failed with return code {return_code}.")
-#         exit(return_code)
-
-# if __name__ == "__main__":
-#     main()
-# """
 
 
 def _generate_train_script_wrapper_py_content(
