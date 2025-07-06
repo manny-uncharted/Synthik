@@ -1,9 +1,11 @@
-export { default as DatasetCard } from './DatasetCard';
-export { default as DatasetPreview } from './DatasetPreview';
-export { default as DatasetVisibility } from './DatasetVisibility';
-export { default as DatasetParameters } from './DatasetParameters';
-export { default as DatasetTypeSelector } from './DatasetTypeSelector';
 export { default as CreateDatasetCard } from './CreateDatasetCard';
 export { default as CreateDatasetFlow } from './CreateDatasetFlow';
+export { default as DatasetCard } from './DatasetCard';
+export { default as DatasetParameters } from './DatasetParameters';
+export { default as DatasetPreview } from './DatasetPreview';
+export { default as DatasetTypeSelector } from './DatasetTypeSelector';
+export { default as DatasetVisibility } from './DatasetVisibility';
+export { default as FilecoinPublisher } from './FilecoinPublisher';
 export { default as TransformationBuilder } from './TransformationBuilder';
 export { default as AnonymizationOptions } from './AnonymizationOptions';
+export { default as MarketplaceFinalizer } from './MarketplaceFinalizer';

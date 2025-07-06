@@ -81,6 +81,7 @@ interface DatasetPreviewProps {
   onExport: (format: 'json' | 'csv', exportFull?: boolean) => void;
   onGenerateFullDataset: () => Promise<FullDatasetData>;
   generationProgress?: number;
+  selectedModel?: string;
   // Dataset configuration for publishing
   config?: {
     name: string;
@@ -91,6 +92,7 @@ interface DatasetPreviewProps {
     visibility: string;
     rows: number;
     quality: string;
+    datasetType: string;
   };
 }
 
@@ -101,6 +103,7 @@ export default function DatasetPreview({
   onExport,
   onGenerateFullDataset,
   generationProgress = 0,
+  selectedModel,
   config,
 }: DatasetPreviewProps) {
   const [viewMode, setViewMode] = useState<'table' | 'json'>('table');
@@ -146,6 +149,7 @@ export default function DatasetPreview({
       visibility: 'public',
       rows: data?.totalRows || 0,
       quality: 'high',
+      datasetType: 'generation', // Default dataset type
     };
   }, [config, data]);
 
@@ -710,6 +714,7 @@ export default function DatasetPreview({
             setPublishResult={setPublishResult}
             showPublishOptions={showPublishOptions}
             setShowPublishOptions={setShowPublishOptions}
+            selectedModel={selectedModel}
           />
         </div>
       )}

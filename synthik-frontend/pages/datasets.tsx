@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import {
   Search,
@@ -16,116 +17,315 @@ import {
 import { DatasetCard } from '../components/dataset';
 import Layout from '../components/Layout';
 
+interface Dataset {
+  id: string;
+  creatorId: string;
+  name: string;
+  description: string;
+  category: string;
+  tags: string[];
+  visibility: string;
+  license: string;
+  price: number;
+  format: string;
+  metadataCid: string;
+  datasetPreviewCid: string;
+  datasetCid: string;
+  price_per_row: number;
+  dataset_type: string;
+}
+
+interface DatasetsResponse {
+  datasets: Dataset[];
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+
+const fetchDatasets = async (
+  page: number = 1,
+  limit: number = 6
+): Promise<DatasetsResponse> => {
+  const response = await fetch(
+    `${baseUrl}/datasets?page=${page}&limit=${limit}`
+  );
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch datasets: ${response.status}`);
+  }
+
+  return response.json();
+};
+
 export default function Datasets() {
+  // Initialize state with persistence
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [sortBy, setSortBy] = useState('trending');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [allDatasets, setAllDatasets] = useState<Dataset[]>([]);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [, setIsRestoringFromSavedState] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedState = sessionStorage.getItem('datasets-page-state');
+      if (savedState) {
+        try {
+          const parsed = JSON.parse(savedState);
+          setIsRestoringFromSavedState(true);
+          setCurrentPage(parsed.currentPage || 1);
+          setAllDatasets(parsed.allDatasets || []);
+          setSearchQuery(parsed.searchQuery || '');
+          setSelectedCategory(parsed.selectedCategory || 'all');
+          setSortBy(parsed.sortBy || 'trending');
+          setViewMode(parsed.viewMode || 'grid');
+          console.log('Restored state:', parsed);
+          // Reset the flag after a short delay to allow all state updates to complete
+          setTimeout(() => setIsRestoringFromSavedState(false), 100);
+        } catch (error) {
+          console.error('Error loading saved state:', error);
+        }
+      }
+      setIsInitialized(true);
+    }
+  }, []);
+
+  // Save state to sessionStorage whenever it changes
+  useEffect(() => {
+    if (isInitialized && typeof window !== 'undefined') {
+      const stateToSave = {
+        currentPage,
+        allDatasets,
+        searchQuery,
+        selectedCategory,
+        sortBy,
+        viewMode,
+        timestamp: Date.now(),
+      };
+      sessionStorage.setItem(
+        'datasets-page-state',
+        JSON.stringify(stateToSave)
+      );
+    }
+  }, [
+    currentPage,
+    allDatasets,
+    searchQuery,
+    selectedCategory,
+    sortBy,
+    viewMode,
+    isInitialized,
+  ]);
 
   // Log origin for debugging Privy authorization
   useEffect(() => {
     console.log('Origin:', window.location.origin);
   }, []);
 
-  // Mock data - replace with real data from API
-  const datasets = [
-    {
-      id: 1,
-      title: 'Medical Diagnosis Records',
-      description:
-        'Synthetic patient records with symptoms, diagnoses, and treatment plans. HIPAA-compliant and ready for ML training.',
-      category: 'Healthcare',
-      size: '2.3 GB',
-      downloads: 15234,
-      views: 45678,
-      rating: 4.8,
-      lastUpdated: '2 days ago',
-      isVerified: true,
-      isLocked: true,
-      price: 150,
-      creator: 'drsmith.eth',
-    },
-    {
-      id: 2,
-      title: 'Financial Transaction Data',
-      description:
-        'Realistic banking transactions with fraud patterns for anomaly detection models. Includes edge cases.',
-      category: 'Finance',
-      size: '850 MB',
-      downloads: 8921,
-      views: 23456,
-      rating: 4.6,
-      lastUpdated: '1 week ago',
-      isVerified: true,
-      isLocked: true,
-      price: 75,
-      creator: 'alice.eth',
-    },
-    {
-      id: 3,
-      title: 'E-commerce Customer Behavior',
-      description:
-        'User interaction data including browsing patterns, purchases, and cart abandonment scenarios.',
-      category: 'Retail',
-      size: '1.2 GB',
-      downloads: 12456,
-      views: 34567,
-      rating: 4.9,
-      lastUpdated: '3 days ago',
-      isVerified: true,
-      isLocked: false,
-      price: 0,
-      creator: 'retailai.eth',
-    },
-    {
-      id: 4,
-      title: 'Autonomous Vehicle Sensors',
-      description:
-        'Multi-modal sensor data for self-driving car scenarios including edge cases and weather conditions.',
-      category: 'Automotive',
-      size: '5.7 GB',
-      downloads: 6789,
-      views: 19234,
-      rating: 4.7,
-      lastUpdated: '5 days ago',
-      isVerified: true,
-      isLocked: true,
-      price: 300,
-      creator: 'automl.eth',
-    },
-    {
-      id: 5,
-      title: 'Natural Language Conversations',
-      description:
-        'Multi-turn dialogue datasets in 15 languages for chatbot and virtual assistant training.',
-      category: 'NLP',
-      size: '980 MB',
-      downloads: 23456,
-      views: 56789,
-      rating: 4.9,
-      lastUpdated: '1 day ago',
-      isVerified: true,
-      isLocked: true,
-      price: 50,
-      creator: 'nlpmaster.eth',
-    },
-    {
-      id: 6,
-      title: 'Supply Chain Logistics',
-      description:
-        'End-to-end supply chain data including inventory, shipping routes, and demand forecasting.',
-      category: 'Logistics',
-      size: '3.2 GB',
-      downloads: 4567,
-      views: 12345,
-      rating: 4.5,
-      lastUpdated: '1 week ago',
-      isVerified: true,
-      isLocked: true,
-      price: 125,
-      creator: 'logistics.eth',
-    },
-  ];
+  // Use TanStack Query for data fetching
+  const {
+    data: currentPageData,
+    isLoading,
+    error,
+    refetch,
+  } = useQuery<DatasetsResponse, Error>({
+    queryKey: ['datasets', currentPage],
+    queryFn: () => fetchDatasets(currentPage, 6),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes (renamed from cacheTime in newer versions)
+    enabled: isInitialized, // Only run after initialization
+  });
+
+  // Update allDatasets when new data comes in
+  useEffect(() => {
+    if (!isInitialized) return;
+
+    console.log('Data update effect triggered:', {
+      hasData: !!currentPageData?.datasets,
+      currentPage,
+      datasetCount: currentPageData?.datasets?.length,
+    });
+    if (currentPageData?.datasets) {
+      if (currentPage === 1) {
+        // First page - replace all datasets
+        console.log(
+          'Setting first page datasets:',
+          currentPageData.datasets.length
+        );
+        setAllDatasets(currentPageData.datasets);
+      } else {
+        // Subsequent pages - append to existing datasets
+        console.log(
+          'Appending page',
+          currentPage,
+          'datasets:',
+          currentPageData.datasets.length
+        );
+        setAllDatasets((prev) => {
+          // Avoid duplicates by checking if dataset already exists
+          const existingIds = new Set(prev.map((d) => d.id));
+          const newDatasets = currentPageData.datasets.filter(
+            (d) => !existingIds.has(d.id)
+          );
+          console.log('New datasets to add:', newDatasets.length);
+          return [...prev, ...newDatasets];
+        });
+      }
+      setIsLoadingMore(false);
+    }
+  }, [currentPageData, currentPage, isInitialized]);
+
+  // Reset to page 1 when search or category changes (but not during initial load)
+  useEffect(() => {
+    if (!isInitialized) return;
+
+    // Don't reset during initial restoration
+    const isRestoringState = sessionStorage.getItem('datasets-page-state');
+    if (isRestoringState) {
+      // Remove flag so subsequent changes will trigger reset
+      sessionStorage.removeItem('datasets-fresh-load');
+      return;
+    }
+
+    console.log('Search or category changed, resetting pagination');
+    setCurrentPage(1);
+    setAllDatasets([]);
+    // Clear persisted state when filters change
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem('datasets-page-state');
+    }
+  }, [searchQuery, selectedCategory, isInitialized]);
+
+  // Clear persisted state when user explicitly refreshes the page
+  useEffect(() => {
+    // Set a flag to detect if this is a fresh page load vs restored state
+    const isPageRefresh = !sessionStorage.getItem('datasets-page-state');
+    if (isPageRefresh) {
+      sessionStorage.setItem('datasets-fresh-load', 'true');
+    }
+
+    const handleBeforeUnload = () => {
+      // Only clear state if user is actually refreshing/closing, not navigating
+      // We'll let the natural session storage expiration handle cleanup
+      const now = Date.now();
+      const stateData = sessionStorage.getItem('datasets-page-state');
+      if (stateData) {
+        try {
+          const parsed = JSON.parse(stateData);
+          // If state is older than 1 hour, clear it
+          if (now - parsed.timestamp > 60 * 60 * 1000) {
+            sessionStorage.removeItem('datasets-page-state');
+          }
+        } catch {
+          sessionStorage.removeItem('datasets-page-state');
+        }
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, []);
+
+  const datasets = allDatasets;
+
+  // Generate consistent random values based on dataset ID for persistence
+  const generatePersistentRandom = (
+    seed: string,
+    min: number,
+    max: number
+  ): number => {
+    // Simple hash function to convert string to number
+    let hash = 0;
+    for (let i = 0; i < seed.length; i++) {
+      const char = seed.charCodeAt(i);
+      hash = (hash << 5) - hash + char;
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+
+    // Use the hash as a seed for pseudo-random generation
+    const random = Math.abs(hash) / 2147483647; // Normalize to 0-1
+    return min + random * (max - min);
+  };
+
+  // Handle load more
+  const handleLoadMore = () => {
+    console.log('Load more clicked, current page:', currentPage);
+    setIsLoadingMore(true);
+    setCurrentPage((prev) => prev + 1);
+  };
+
+  // Check if there are more pages to load
+  const hasMore = currentPageData
+    ? currentPage < currentPageData.totalPages
+    : false;
+
+  // Debug logging
+  useEffect(() => {
+    console.log('Pagination state:', {
+      currentPage,
+      hasMore,
+      isLoadingMore,
+      totalPages: currentPageData?.totalPages,
+      datasetsLength: allDatasets.length,
+    });
+  }, [
+    currentPage,
+    hasMore,
+    isLoadingMore,
+    currentPageData?.totalPages,
+    allDatasets.length,
+  ]);
+
+  // Transform dataset for DatasetCard component
+  const transformDataset = (dataset: Dataset) => ({
+    id: dataset.id,
+    title: dataset.name,
+    description: dataset.description || 'No description available',
+    category: dataset.category,
+    tags: dataset.tags || [],
+    size: formatStorageSize(dataset.price_per_row), // Use price_per_row as bytes per row
+    downloads: Math.round(
+      generatePersistentRandom(dataset.id + 'downloads', 20, 50)
+    ),
+    views: Math.round(generatePersistentRandom(dataset.id + 'views', 200, 400)),
+    rating:
+      Math.round(
+        generatePersistentRandom(dataset.id + 'rating', 3.7, 5.0) * 10
+      ) / 10, // Round to 1 decimal
+    lastUpdated: 'Recently',
+    isVerified: true,
+    isLocked: dataset.price > 0, // Show as locked if it has a price, regardless of visibility
+    price: dataset.price,
+    creator:
+      dataset.creatorId.substring(0, 6) +
+      '...' +
+      dataset.creatorId.substring(dataset.creatorId.length - 4),
+  });
+
+  const formatStorageSize = (bytesPerRow: number): string => {
+    if (!bytesPerRow || bytesPerRow === 0) return 'Unknown';
+
+    const estimatedRows = generatePersistentRandom('rows', 500, 2000);
+    const totalBytes = bytesPerRow * estimatedRows;
+
+    if (totalBytes < 1024) {
+      return `${Math.round(totalBytes)} B`;
+    } else if (totalBytes < 1024 * 1024) {
+      return `${(totalBytes / 1024).toFixed(1)} KB`;
+    } else if (totalBytes < 1024 * 1024 * 1024) {
+      return `${(totalBytes / (1024 * 1024)).toFixed(1)} MB`;
+    } else {
+      return `${(totalBytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+    }
+  };
 
   const categories = [
     { value: 'all', label: 'All Categories' },
@@ -135,6 +335,7 @@ export default function Datasets() {
     { value: 'automotive', label: 'Automotive' },
     { value: 'nlp', label: 'NLP' },
     { value: 'logistics', label: 'Logistics' },
+    { value: 'generation', label: 'Generation' },
   ];
 
   const sortOptions = [
@@ -154,6 +355,15 @@ export default function Datasets() {
       icon: <Download className="w-4 h-4" />,
     },
   ];
+
+  const filteredDatasets = datasets.filter((dataset: Dataset) => {
+    const matchesSearch =
+      dataset.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      dataset.description.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory =
+      selectedCategory === 'all' || dataset.category === selectedCategory;
+    return matchesSearch && matchesCategory;
+  });
 
   return (
     <Layout>
@@ -309,7 +519,7 @@ export default function Datasets() {
           <div className="max-w-7xl mx-auto">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-light">
-                <span className="text-gray-500">{datasets.length}</span>{' '}
+                <span className="text-gray-500">{filteredDatasets.length}</span>{' '}
                 datasets available
               </h2>
               <div className="flex items-center gap-2 text-sm text-gray-600">
@@ -318,31 +528,102 @@ export default function Datasets() {
               </div>
             </div>
 
-            <div
-              className={`grid ${
-                viewMode === 'grid'
-                  ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
-                  : 'grid-cols-1'
-              } gap-6`}
-            >
-              {datasets.map((dataset, index) => (
-                <motion.div
-                  key={dataset.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: index * 0.05 }}
+            {/* Loading State */}
+            {(isLoading || !isInitialized) && (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                <span className="ml-2 text-gray-600">
+                  {!isInitialized ? 'Initializing...' : 'Loading datasets...'}
+                </span>
+              </div>
+            )}
+
+            {/* Error State */}
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+                <p className="text-red-600">
+                  Error:{' '}
+                  {error instanceof Error ? error.message : 'Unknown error'}
+                </p>
+                <button
+                  onClick={() => refetch()}
+                  className="mt-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
                 >
-                  <DatasetCard {...dataset} id={String(dataset.id)} />
-                </motion.div>
-              ))}
-            </div>
+                  Retry
+                </button>
+              </div>
+            )}
+
+            {/* Datasets Grid */}
+            {!isLoading && !error && isInitialized && (
+              <div
+                className={`grid ${
+                  viewMode === 'grid'
+                    ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
+                    : 'grid-cols-1'
+                } gap-6`}
+              >
+                {filteredDatasets.map((dataset: Dataset, index: number) => (
+                  <motion.div
+                    key={dataset.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: index * 0.05 }}
+                  >
+                    <DatasetCard {...transformDataset(dataset)} />
+                  </motion.div>
+                ))}
+              </div>
+            )}
+
+            {/* Empty State */}
+            {!isLoading &&
+              !error &&
+              isInitialized &&
+              filteredDatasets.length === 0 && (
+                <div className="text-center py-12">
+                  <p className="text-gray-500 text-lg">
+                    No datasets found matching your criteria.
+                  </p>
+                  <p className="text-gray-400 mt-2">
+                    Try adjusting your search or filters.
+                  </p>
+                </div>
+              )}
 
             {/* Load More */}
-            <div className="mt-12 text-center">
-              <button className="px-8 py-3 border border-gray-300 rounded-xl font-medium hover:border-gray-400 transition-colors">
-                Load More Datasets
-              </button>
-            </div>
+            {!isLoading &&
+              !error &&
+              isInitialized &&
+              filteredDatasets.length > 0 &&
+              hasMore && (
+                <div className="mt-12 text-center">
+                  <button
+                    className="px-8 py-3 border border-gray-300 rounded-xl font-medium hover:border-gray-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mx-auto"
+                    onClick={handleLoadMore}
+                    disabled={!hasMore || isLoadingMore}
+                  >
+                    {isLoadingMore && (
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600"></div>
+                    )}
+                    {isLoadingMore ? 'Loading More...' : 'Load More Datasets'}
+                  </button>
+                </div>
+              )}
+
+            {/* Show total count and pagination info */}
+            {!isLoading &&
+              !error &&
+              isInitialized &&
+              filteredDatasets.length > 0 && (
+                <div className="mt-8 text-center text-sm text-gray-500">
+                  Showing {filteredDatasets.length} of{' '}
+                  {currentPageData?.total || 0} datasets
+                  {!hasMore && filteredDatasets.length > 6 && (
+                    <span className="block mt-1">All datasets loaded</span>
+                  )}
+                </div>
+              )}
           </div>
         </section>
       </div>
