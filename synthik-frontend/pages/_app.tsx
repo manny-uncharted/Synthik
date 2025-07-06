@@ -6,6 +6,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useState } from 'react';
 import { WagmiProvider, createConfig, http } from 'wagmi';
 import React from 'react';
+import 'react-toastify/dist/ReactToastify.css';
+import { ToastContainer } from 'react-toastify';
 
 export default function App({ Component, pageProps }: AppProps) {
   // Create a client instance for TanStack Query
@@ -43,7 +45,7 @@ export default function App({ Component, pageProps }: AppProps) {
             appearance: {
               theme: 'light',
               accentColor: '#6366f1',
-              logo: 'https://your-logo-url.com/logo.png',
+              logo: 'https://i.imghippo.com/files/LO2505Ww.png',
             },
             // Create embedded wallets for users who don't have a wallet
             embeddedWallets: {
@@ -56,6 +58,7 @@ export default function App({ Component, pageProps }: AppProps) {
           }}
         >
           <Component {...pageProps} />
+          <ToastContainer position="top-right" autoClose={4000} />
         </PrivyProvider>
       </WagmiProvider>
     </QueryClientProvider>

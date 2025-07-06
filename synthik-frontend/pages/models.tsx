@@ -18,19 +18,19 @@ import Layout from '../components/Layout';
 const mockModels = [
   {
     id: '1',
-    name: 'FinBERT-Synthik',
+    name: 'Pythia-70M Finance LoRA',
     description:
-      'Fine-tuned BERT model for financial sentiment analysis using synthetic financial news data',
+      'Fine-tuned Pythia-70M model for financial sentiment analysis using synthetic financial news data',
     provider: 'Hugging Face',
-    baseModel: 'BERT-base',
+    baseModel: 'EleutherAI/pythia-70m-deduped',
     datasetUsed: 'financial-news-10k',
-    datasetRows: 10000,
+    datasetRows: 1000,
     trainedBy: 'alice.eth',
-    trainedDate: '2 days ago',
-    accuracy: 94.2,
+    trainedDate: '30 mins ago',
+    accuracy: 90.2,
     downloads: 1250,
     stars: 89,
-    tags: ['nlp', 'finance', 'sentiment-analysis', 'bert'],
+    tags: ['nlp', 'finance', 'sentiment-analysis', 'pythia'],
     filecoinCID: 'bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi',
     status: 'ready' as const,
     metrics: {

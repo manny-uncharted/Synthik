@@ -184,6 +184,50 @@ export default function DatasetPreview({
     }
   };
 
+  // Direct export function for already generated full dataset
+  const exportFullDataset = (format: 'json' | 'csv') => {
+    if (!fullDataset) return;
+
+    const filename = `${memoConfig.name.replace(
+      /\s+/g,
+      '_'
+    )}_full_dataset.${format}`;
+    let content: string;
+
+    if (format === 'json') {
+      content = JSON.stringify(fullDataset.rows, null, 2);
+    } else {
+      // CSV format
+      if (fullDataset.rows.length === 0) return;
+
+      const headers = Object.keys(fullDataset.rows[0]).join(',');
+      const rows = fullDataset.rows.map((row) =>
+        Object.values(row)
+          .map((value) => {
+            if (value === null || value === undefined) return '';
+            if (typeof value === 'string' && value.includes(',')) {
+              return `"${value.replace(/"/g, '""')}"`;
+            }
+            return String(value);
+          })
+          .join(',')
+      );
+      content = [headers, ...rows].join('\n');
+    }
+
+    const blob = new Blob([content], {
+      type: format === 'json' ? 'application/json' : 'text/csv',
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   const handleGenerateFullDataset = async () => {
     setIsGeneratingFull(true);
     setFullGenerationProgress(0);
@@ -647,7 +691,7 @@ export default function DatasetPreview({
 
               <div className="flex items-center gap-4">
                 <button
-                  onClick={() => onExport('csv', true)}
+                  onClick={() => exportFullDataset('csv')}
                   className="px-4 py-2 bg-white border border-gray-200 rounded-lg hover:border-gray-300 transition-colors flex items-center gap-2 text-sm font-medium"
                 >
                   <Download className="w-4 h-4" />
@@ -698,6 +742,42 @@ export default function DatasetPreview({
                 className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm font-medium"
               >
                 Back
+              </button>
+            </div>
+
+            {/* Export Options */}
+            <div className="flex items-center gap-4 pt-4 border-t border-gray-200">
+              <p className="text-sm text-gray-600">Export options:</p>
+              <button
+                onClick={() => onExport('csv', false)}
+                className="px-4 py-2 bg-white border border-gray-200 rounded-lg hover:border-gray-300 transition-colors flex items-center gap-2 text-sm font-medium"
+              >
+                <Download className="w-4 h-4" />
+                Export Preview ({data.rows.length} rows)
+              </button>
+              {fullDataset && (
+                <button
+                  onClick={() => exportFullDataset('csv')}
+                  className="px-4 py-2 bg-white border border-gray-200 rounded-lg hover:border-gray-300 transition-colors flex items-center gap-2 text-sm font-medium"
+                >
+                  <Download className="w-4 h-4" />
+                  Export Full Dataset ({fullDataset.totalRows.toLocaleString()}{' '}
+                  rows)
+                </button>
+              )}
+              <button
+                onClick={() =>
+                  fullDataset
+                    ? exportFullDataset('json')
+                    : onExport('json', false)
+                }
+                className="px-4 py-2 bg-white border border-gray-200 rounded-lg hover:border-gray-300 transition-colors flex items-center gap-2 text-sm font-medium"
+              >
+                <Code className="w-4 h-4" />
+                Export as JSON{' '}
+                {fullDataset
+                  ? `(${fullDataset.totalRows.toLocaleString()} rows)`
+                  : `(${data.rows.length} rows)`}
               </button>
             </div>
           </div>
