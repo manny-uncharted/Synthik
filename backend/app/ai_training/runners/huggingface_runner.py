@@ -51,6 +51,20 @@ def _generate_requirements_txt_content(script_config: Dict[str, Any]) -> str:
         # gcsfs # Uncomment if train_text_lora directly reads from GCS
     """
 
+def _generate_packages_txt_content(script_config: Dict[str, Any]) -> str:
+    """
+    Generates the content for packages.txt to install system-level dependencies.
+    """
+    # Default packages needed for libs like bitsandbytes to compile extensions
+    default_packages = ["build-essential"]
+    
+    # Allow script_config to override the list if needed for other system deps
+    packages = script_config.get("hf_space_system_packages", default_packages)
+    
+    if isinstance(packages, list) and packages:
+        return "\n".join(packages)
+    return "" # Return empty string if no packages are needed
+
 def _generate_dockerfile_content(script_config: Dict[str, Any]) -> str:
     """Generates the content for the Dockerfile."""
     python_version = script_config.get("hf_space_python_version", DEFAULT_PYTHON_VERSION)
@@ -432,7 +446,14 @@ async def submit_huggingface_training_job(
         async with aiofiles.open(temp_space_dir_path_obj / "requirements.txt", "w", encoding='utf-8') as f:
             await f.write(req_content)
 
-        # 4. Generate and write Dockerfile
+        # 4. Generate and write packages.txt for system dependencies
+        packages_content = _generate_packages_txt_content(script_config)
+        if packages_content: # Only write the file if there is content
+            print(f"[HuggingFaceRunner job_id={job.id}]: Generated packages.txt content:\n{packages_content}")
+            async with aiofiles.open(temp_space_dir_path_obj / "packages.txt", "w", encoding='utf-8') as f:
+                await f.write(packages_content)
+
+        # 5. Generate and write Dockerfile
         dockerfile_content = _generate_dockerfile_content(script_config) # You need to define this helper
         print(f"[HuggingFaceRunner job_id={job.id}]: Generated Dockerfile content: {dockerfile_content}")
         async with aiofiles.open(temp_space_dir_path_obj / "Dockerfile", "w", encoding='utf-8') as f:
