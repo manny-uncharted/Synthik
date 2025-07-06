@@ -1,198 +1,134 @@
 import { motion } from 'framer-motion';
-import {
-  Brain,
-  Clock,
-  Cpu,
-  Download,
-  Star,
-  ArrowUpRight,
-  CheckCircle,
-  Zap,
-} from 'lucide-react';
+import { Download, Star, Shield, TrendingUp, ArrowUpRight } from 'lucide-react';
 import Link from 'next/link';
 
 interface ModelCardProps {
-  id: string;
-  name: string;
-  description: string;
-  baseModel: string;
-  modelType: string;
-  platform: string;
-  status: string;
-  metrics?: {
-    loss: number;
-    accuracy?: number;
+  model: {
+    id: string;
+    name: string;
+    description: string;
+    provider: string;
+    baseModel: string;
+    datasetUsed: string;
+    datasetRows: number;
+    trainedBy: string;
+    trainedDate: string;
+    accuracy: number;
+    downloads: number;
+    stars: number;
+    tags: string[];
+    filecoinCID: string;
+    status: 'training' | 'ready' | 'deprecated';
+    metrics: {
+      f1Score: number;
+      precision: number;
+      recall: number;
+    };
   };
-  downloads: number;
-  stars: number;
-  lastUpdated: string;
-  creator: string;
-  huggingfaceUrl?: string;
 }
 
-export default function ModelCard({
-  id,
-  name,
-  description,
-  baseModel,
-  modelType,
-  platform,
-  status,
-  metrics,
-  downloads,
-  stars,
-  lastUpdated,
-  creator,
-  huggingfaceUrl,
-}: ModelCardProps) {
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'completed':
-        return 'bg-green-50 text-green-700 border-green-200';
-      case 'training':
-      case 'running':
-        return 'bg-blue-50 text-blue-700 border-blue-200';
-      case 'failed':
-        return 'bg-red-50 text-red-700 border-red-200';
-      default:
-        return 'bg-gray-50 text-gray-700 border-gray-200';
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'completed':
-        return <CheckCircle className="w-3.5 h-3.5" />;
-      case 'training':
-      case 'running':
-        return <Zap className="w-3.5 h-3.5 animate-pulse" />;
-      default:
-        return null;
-    }
-  };
-
+export default function ModelCard({ model }: ModelCardProps) {
   return (
-    <Link href={`/models/${id}`}>
-      <motion.article
-        className="group relative h-full bg-white border border-gray-200 rounded-lg overflow-hidden hover:border-gray-300 hover:shadow-lg transition-all duration-200"
-        whileHover={{ y: -2 }}
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-      >
-        {/* Gradient Header */}
-        <div className="h-2 bg-gradient-to-r from-indigo-500 to-purple-600" />
+    <motion.div
+      whileHover={{ y: -4 }}
+      className="group relative bg-white rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-lg hover:shadow-gray-200/50"
+    >
+      {/* Status indicator - subtle */}
+      <div className="absolute top-4 right-4 z-10">
+        {model.status === 'ready' && (
+          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white/90 backdrop-blur-sm rounded-full text-xs font-medium border border-emerald-200 text-emerald-700">
+            <Shield className="w-3.5 h-3.5" />
+            <span>Verified</span>
+          </div>
+        )}
+        {model.status === 'training' && (
+          <div className="px-3 py-1.5 bg-amber-50 rounded-full text-xs font-medium text-amber-700 border border-amber-200">
+            Training
+          </div>
+        )}
+      </div>
 
-        {/* Content */}
-        <div className="p-4">
-          {/* Header */}
-          <div className="flex items-start justify-between mb-3">
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
-                <h3 className="text-lg font-semibold text-gray-900 truncate group-hover:text-gray-700 transition-colors">
-                  {name}
-                </h3>
-                <span
-                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(
-                    status
-                  )}`}
-                >
-                  {getStatusIcon(status)}
-                  {status}
+      {/* Main content */}
+      <div className="p-6">
+        {/* Header - simplified */}
+        <div className="mb-4">
+          <h3 className="text-xl font-semibold text-gray-900 mb-2 group-hover:text-indigo-600 transition-colors">
+            {model.name}
+          </h3>
+          <p className="text-gray-600 text-sm leading-relaxed line-clamp-2">
+            {model.description}
+          </p>
+        </div>
+
+        {/* Key metric - prominent */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-4">
+            <div className="text-center">
+              <div className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                {model.accuracy}%
+              </div>
+              <div className="text-xs text-gray-500 font-medium mt-1">
+                accuracy
+              </div>
+            </div>
+
+            {/* Secondary metrics - simplified */}
+            <div className="flex gap-3 text-sm text-gray-600">
+              <button className="flex items-center gap-1.5 hover:text-indigo-600 transition-colors">
+                <Star className="w-4 h-4" />
+                <span className="font-medium">{model.stars}</span>
+              </button>
+              <span className="text-gray-300">•</span>
+              <span className="flex items-center gap-1.5">
+                <Download className="w-4 h-4" />
+                <span className="font-medium">
+                  {(model.downloads / 1000).toFixed(1)}k
                 </span>
-              </div>
-
-              <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
-                <Brain className="w-4 h-4" />
-                <span className="truncate">{baseModel}</span>
-              </div>
-
-              <p className="text-sm text-gray-600 line-clamp-2 leading-relaxed">
-                {description}
-              </p>
+              </span>
             </div>
           </div>
 
-          {/* Model Type & Platform */}
-          <div className="flex items-center gap-3 mb-3">
-            <span className="px-2 py-1 bg-indigo-50 text-indigo-600 text-xs rounded-lg font-medium">
-              {modelType}
-            </span>
-            <span className="px-2 py-1 bg-purple-50 text-purple-600 text-xs rounded-lg font-medium capitalize">
-              {platform.replace('_', ' ')}
-            </span>
-          </div>
-
-          {/* Metrics Preview (if available) */}
-          {metrics && status === 'completed' && (
-            <div className="flex items-center gap-4 p-3 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg mb-3">
-              <div className="text-center">
-                <div className="text-sm font-semibold text-gray-900">
-                  {metrics.loss.toFixed(4)}
-                </div>
-                <div className="text-xs text-gray-500">Loss</div>
-              </div>
-              {metrics.accuracy && (
-                <div className="text-center">
-                  <div className="text-sm font-semibold text-gray-900">
-                    {(metrics.accuracy * 100).toFixed(1)}%
-                  </div>
-                  <div className="text-xs text-gray-500">Accuracy</div>
-                </div>
-              )}
-            </div>
+          {/* Trending badge */}
+          {model.downloads > 2000 && (
+            <TrendingUp className="w-5 h-5 text-orange-500" />
           )}
-
-          {/* Stats */}
-          <div className="grid grid-cols-3 gap-3 p-3 bg-gray-50 rounded-md">
-            <div className="text-center">
-              <div className="text-sm font-semibold text-gray-900">
-                {downloads >= 1000
-                  ? `${(downloads / 1000).toFixed(1)}k`
-                  : downloads.toLocaleString()}
-              </div>
-              <div className="text-xs text-gray-500">Downloads</div>
-            </div>
-
-            <div className="text-center">
-              <div className="flex items-center justify-center gap-1">
-                <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
-                <span className="text-sm font-semibold text-gray-900">
-                  {stars}
-                </span>
-              </div>
-              <div className="text-xs text-gray-500">Stars</div>
-            </div>
-
-            <div className="text-center">
-              <div className="text-sm font-semibold text-gray-900 capitalize">
-                {platform === 'hugging_face' ? 'HF' : 'Local'}
-              </div>
-              <div className="text-xs text-gray-500">Platform</div>
-            </div>
-          </div>
         </div>
 
-        {/* Footer */}
-        <div className="px-4 py-3 bg-gradient-to-r from-indigo-50 to-purple-50 border-t border-gray-100">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3 text-xs text-gray-600">
-              <div className="flex items-center gap-1">
-                <Cpu className="w-3 h-3" />
-                <span>{creator}</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <Clock className="w-3 h-3" />
-                <span>{lastUpdated}</span>
-              </div>
-            </div>
-            <div className="flex items-center gap-1 text-sm text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity">
-              <span>View</span>
-              <ArrowUpRight className="w-4 h-4" />
-            </div>
-          </div>
+        {/* Model details - minimal */}
+        <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
+          <span className="font-medium text-gray-700">{model.baseModel}</span>
+          <span>•</span>
+          <span>{model.trainedDate}</span>
         </div>
-      </motion.article>
-    </Link>
+
+        {/* Tags - limited */}
+        <div className="flex flex-wrap gap-2 mb-5">
+          {model.tags.slice(0, 2).map((tag, index) => (
+            <span
+              key={index}
+              className="px-3 py-1 bg-gray-50 text-gray-600 text-xs rounded-lg font-medium"
+            >
+              {tag}
+            </span>
+          ))}
+          {model.tags.length > 2 && (
+            <span className="px-3 py-1 text-gray-400 text-xs font-medium">
+              +{model.tags.length - 2} more
+            </span>
+          )}
+        </div>
+
+        {/* Actions - simplified */}
+        <Link
+          href={`/models/${model.id}`}
+          className="group/link flex items-center justify-between w-full px-4 py-3 bg-gray-50 hover:bg-indigo-50 rounded-xl transition-all"
+        >
+          <span className="text-sm font-medium text-gray-700 group-hover/link:text-indigo-600 transition-colors">
+            View Model Details
+          </span>
+          <ArrowUpRight className="w-4 h-4 text-gray-400 group-hover/link:text-indigo-600 transition-all group-hover/link:translate-x-0.5 group-hover/link:-translate-y-0.5" />
+        </Link>
+      </div>
+    </motion.div>
   );
 }

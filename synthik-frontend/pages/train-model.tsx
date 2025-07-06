@@ -125,7 +125,7 @@ function parseJSON(jsonText: string): Record<string, string | number>[] {
     } else {
       return [];
     }
-  } catch (error) {
+  } catch {
     // Try JSONL format
     try {
       const lines = jsonText.trim().split('\n');
@@ -133,7 +133,7 @@ function parseJSON(jsonText: string): Record<string, string | number>[] {
         .filter((line) => line.trim() !== '')
         .map((line) => JSON.parse(line.trim()));
       return data;
-    } catch (jsonlError) {
+    } catch {
       return [];
     }
   }
@@ -144,7 +144,6 @@ export default function TrainModel() {
   const { dataset: datasetId } = router.query;
 
   const [currentStep, setCurrentStep] = useState(1);
-  const [isTraining, setIsTraining] = useState(false);
 
   // Dataset state
   const [dataset, setDataset] = useState<DatasetResponse | null>(null);
@@ -257,7 +256,6 @@ export default function TrainModel() {
   };
 
   const startTraining = () => {
-    setIsTraining(true);
     setCurrentStep(4);
     // Simulate training process
     setTimeout(() => {
@@ -418,8 +416,16 @@ export default function TrainModel() {
 
                   {currentStep === 4 && (
                     <TrainingStatusStep
-                      isTraining={isTraining}
+                      selectedModel={selectedModel}
                       selectedTarget={selectedTarget}
+                      modelParams={modelParams}
+                      dataset={{
+                        id: dataset.id,
+                        name: dataset.name,
+                        datasetCid: dataset.datasetCid,
+                        format: dataset.format,
+                      }}
+                      isTestnet={true}
                     />
                   )}
                 </motion.div>

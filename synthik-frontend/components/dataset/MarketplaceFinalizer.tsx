@@ -16,6 +16,7 @@ import { usePrivyEthers } from '../../hooks/usePrivyEthers';
 import ProvenanceManagerABI from '../../abis/ProvenanceManager.json';
 import DatasetMarketplaceABI from '../../abis/DatasetMarketplace.json';
 import deploymentInfo from '../../abis/deployment/deployments.json';
+import Link from 'next/link';
 
 // Backend API endpoint
 const BACKEND_API_URL = 'https://filecoin.bnshub.org/datasets';
@@ -809,10 +810,15 @@ export default function MarketplaceFinalizer({
 
           {config.visibility === 'public' && (
             <div className="flex gap-3 justify-center">
-              <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2">
+              <Link
+                href="/datasets"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+              >
                 <Globe className="w-4 h-4" />
                 View on Marketplace
-              </button>
+              </Link>
               <button className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2">
                 <Users className="w-4 h-4" />
                 Manage Access

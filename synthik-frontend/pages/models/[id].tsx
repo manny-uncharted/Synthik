@@ -3,7 +3,6 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import {
   ArrowLeft,
-  Download,
   Star,
   Copy,
   ExternalLink,
@@ -82,7 +81,7 @@ interface ModelMetadata {
 // Dummy data for demonstration
 const DUMMY_MODEL: ModelMetadata = {
   id: 'model-123',
-  job_name: 'Pythia-70M Sarcasm LoRA (HF)',
+  job_name: 'Pythia-70M LoRA (HF)',
   user_wallet_address:
     '0x37793860ea65a1e05a9a506ed7b86b084cb9bba5fc9c979da3512464007fa11d',
   dataset_url:
@@ -346,10 +345,7 @@ export default function ModelDetails() {
                   View on Hugging Face
                   <ExternalLink className="w-4 h-4" />
                 </a>
-                <button className="px-6 py-3 bg-white border border-gray-200 rounded-xl font-medium hover:border-gray-300 transition-colors flex items-center gap-2">
-                  <Download className="w-5 h-5" />
-                  Download Weights
-                </button>
+
                 <button className="px-6 py-3 bg-white border border-gray-200 rounded-xl font-medium hover:border-gray-300 transition-colors flex items-center gap-2">
                   <Star className="w-5 h-5" />
                   Star Model
@@ -414,7 +410,7 @@ export default function ModelDetails() {
                   </div>
                   <div>
                     <h3 className="text-sm font-medium text-gray-900 mb-1">
-                      Filecoin Storage
+                      Training Metadata CID
                     </h3>
                     <div className="flex items-center gap-2">
                       <code className="text-sm font-mono text-gray-700">
@@ -436,11 +432,11 @@ export default function ModelDetails() {
                   </div>
                 </div>
                 <Link
-                  href={`https://filfox.info/en/message/${model.filecoin_cid}`}
+                  href={`https://0x311e26702aba231c321c633d1ff6ecb4445f2308.calibration.filcdn.io/${model.filecoin_cid}`}
                   target="_blank"
                   className="flex items-center gap-2 px-4 py-2 bg-white rounded-lg text-sm font-medium text-indigo-600 hover:bg-indigo-50 transition-colors"
                 >
-                  View on Filfox
+                  View with FilCDN
                   <ExternalLink className="w-4 h-4" />
                 </Link>
               </div>

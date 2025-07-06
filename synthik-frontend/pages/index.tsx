@@ -129,7 +129,7 @@ trainer = dataset.get_trainer(
             />
             <span className="text-xl font-medium">Synthik</span>
           </div>
-\
+          \
           <div className="flex items-center gap-8">
             <Link
               href="/datasets"
@@ -170,29 +170,36 @@ trainer = dataset.get_trainer(
             </p>
 
             <div className="flex flex-wrap gap-4 mb-12">
-              <button className="px-8 py-4 btn-primary rounded-lg font-medium flex items-center gap-2">
+              <Link
+                href="/datasets"
+                className="px-8 py-4 btn-primary rounded-lg font-medium flex items-center gap-2"
+              >
                 Start Building <ArrowUpRight className="w-4 h-4" />
-              </button>
-              <button className="px-8 py-4 glass-card rounded-lg font-medium hover:bg-gray-50 transition-colors">
+              </Link>
+              <Link
+                href="/docs"
+                className="px-8 py-4 glass-card rounded-lg font-medium hover:bg-gray-50 transition-colors"
+              >
                 View Documentation
-              </button>
+              </Link>
             </div>
 
             <div className="flex items-center gap-8">
               <div>
-                <div className="text-3xl font-light mb-1">10M+</div>
-                <div className="text-sm text-gray-500">Datasets Created</div>
-              </div>
-              <div className="w-px h-12 bg-gray-200" />
-              <div>
-                <div className="text-3xl font-light mb-1">500K+</div>
-                <div className="text-sm text-gray-500">Models Trained</div>
-              </div>
-              <div className="w-px h-12 bg-gray-200" />
-              <div>
                 <div className="text-3xl font-light mb-1">100%</div>
                 <div className="text-sm text-gray-500">On-Chain Verified</div>
               </div>
+              <div className="w-px h-12 bg-gray-200" />
+              <div>
+                <div className="text-3xl font-light mb-1">99.9%</div>
+                <div className="text-sm text-gray-500">Uptime Guarantee</div>
+              </div>
+              <div className="w-px h-12 bg-gray-200" />
+              <div>
+                <div className="text-3xl font-light mb-1">&lt;5min</div>
+                <div className="text-sm text-gray-500">Generation Time</div>
+              </div>
+              <div className="w-px h-12 bg-gray-200" />
             </div>
           </motion.div>
 

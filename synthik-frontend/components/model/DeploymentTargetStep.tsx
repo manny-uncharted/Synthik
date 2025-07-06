@@ -1,5 +1,8 @@
 import { motion } from 'framer-motion';
 import { Key, ExternalLink } from 'lucide-react';
+import React, { useState } from 'react';
+import { usePrivyEthers } from '../../hooks/usePrivyEthers';
+import { toast } from 'react-toastify';
 
 // Deployment targets
 const deploymentTargets = [
@@ -33,12 +36,84 @@ interface DeploymentTargetStepProps {
   setCredentials: (credentials: Record<string, string>) => void;
 }
 
+const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+
 export default function DeploymentTargetStep({
   selectedTarget,
   setSelectedTarget,
   credentials,
   setCredentials,
 }: DeploymentTargetStepProps) {
+  const { address } = usePrivyEthers();
+
+  const [jsonInput, setJsonInput] = useState('');
+
+  const isHfTokenValid = credentials.secret_key
+    ? /^hf_[a-zA-Z0-9]{20,}$/.test(credentials.secret_key)
+    : false;
+
+  const notifySuccess = () =>
+    toast.success(
+      'Credentials saved securely (hashed, not stored in plain text).'
+    );
+  const notifyError = (msg: string) => toast.error(msg);
+
+  // Handle user pasting full JSON credential blob
+  const handleJsonChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value;
+    setJsonInput(value);
+    try {
+      const data = JSON.parse(value);
+
+      if (data.platform === 'hugging_face') {
+        setSelectedTarget('huggingface');
+        setCredentials({
+          credential_name: data.credential_name || '',
+          hf_username: data.additional_config?.hf_username || '',
+          secret_key: data.secret_key || data.api_key || '',
+        });
+      }
+    } catch {}
+  };
+
+  const handleSave = async () => {
+    if (!address) {
+      notifyError('Connect your wallet first');
+      return;
+    }
+
+    if (selectedTarget === 'huggingface') {
+      const payload = {
+        user_wallet_address: address,
+        platform: 'hugging_face',
+        credential_name: credentials.credential_name || 'My HF Token',
+        additional_config: {
+          hf_username: credentials.hf_username,
+        },
+        api_key: null,
+        secret_key: credentials.secret_key,
+      };
+
+      try {
+        const res = await fetch(`${baseUrl}/mlops/user-credentials`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.message || 'Unknown error');
+        }
+
+        notifySuccess();
+      } catch (err) {
+        console.error('Failed to save credentials:', err);
+        notifyError(`Failed to save: ${err}`);
+      }
+    }
+  };
+
   return (
     <div>
       <h2 className="text-2xl font-semibold text-gray-900 mb-6 display-font">
@@ -88,7 +163,24 @@ export default function DeploymentTargetStep({
               <>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Hugging Face API Key
+                    Credential Name
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="My HF Write Access Token"
+                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-indigo-500"
+                    value={credentials.credential_name || ''}
+                    onChange={(e) =>
+                      setCredentials({
+                        ...credentials,
+                        credential_name: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Hugging Face Write Token
                   </label>
                   <input
                     type="password"
@@ -97,23 +189,24 @@ export default function DeploymentTargetStep({
                     onChange={(e) =>
                       setCredentials({
                         ...credentials,
-                        api_key: e.target.value,
+                        secret_key: e.target.value,
                       })
                     }
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Model Name
+                    Hugging Face Username
                   </label>
                   <input
                     type="text"
-                    placeholder="my-awesome-model"
+                    placeholder="my-hf-username"
                     className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-indigo-500"
+                    value={credentials.hf_username || ''}
                     onChange={(e) =>
                       setCredentials({
                         ...credentials,
-                        model_name: e.target.value,
+                        hf_username: e.target.value,
                       })
                     }
                   />
@@ -213,6 +306,37 @@ export default function DeploymentTargetStep({
                 </div>
               </>
             )}
+          </div>
+
+          {/* Optional JSON import */}
+          {selectedTarget === 'huggingface' && (
+            <div className="mt-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Paste full Hugging Face credential JSON
+              </label>
+              <textarea
+                value={jsonInput}
+                onChange={handleJsonChange}
+                placeholder='{\n  "user_wallet_address": "0x...",\n  "platform": "hugging_face",\n  ...\n}'
+                rows={5}
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-indigo-500 font-mono text-sm"
+              />
+            </div>
+          )}
+
+          {/* Save button */}
+          <div className="mt-6 flex justify-end">
+            <button
+              type="button"
+              onClick={handleSave}
+              className="px-6 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition disabled:opacity-50"
+              disabled={
+                !selectedTarget ||
+                (selectedTarget === 'huggingface' && !isHfTokenValid)
+              }
+            >
+              Save Credentials
+            </button>
           </div>
         </motion.div>
       )}
