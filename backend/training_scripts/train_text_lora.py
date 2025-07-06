@@ -22,6 +22,10 @@ from peft import (
     TaskType
 )
 
+triton_cache_dir = os.getenv("TRITON_CACHE_DIR", "/tmp/.triton_cache")
+os.makedirs(triton_cache_dir, exist_ok=True)
+os.environ["TRITON_CACHE_DIR"] = triton_cache_dir
+
 # --- Logging Setup ---
 logging.basicConfig(
     level=logging.INFO,
@@ -410,7 +414,7 @@ def main():
         "per_device_train_batch_size": args.batch_size,
         "per_device_eval_batch_size": args.batch_size, # Typically same as train for eval
         "gradient_accumulation_steps": args.gradient_accumulation_steps,
-        "evaluation_strategy": "epoch",
+        # "evaluation_strategy": "epoch",
         "save_strategy": "epoch",
         "logging_dir": os.path.join(args.model_output_dir, "training_logs"),
         "logging_steps": getattr(args, 'logging_steps', 10), # Allow override from JSON

@@ -84,7 +84,11 @@ def _generate_dockerfile_content(script_config: Dict[str, Any]) -> str:
 
         # Create directories and make them writable
         RUN mkdir -p /app/outputs && chmod -R 777 /app/outputs \\
-            && mkdir -p /app/.cache/huggingface && chmod -R 777 /app/.cache/huggingface
+            && mkdir -p /app/.cache/huggingface && chmod -R 777 /app/.cache/huggingface \\
+                && mkdir -p /app/.triton && chmod -R 777 /app/.triton \\
+                    && mkdir -p /app/.cache/triton && chmod -R 777 /app/.cache/triton \\
+                        && mkdir -p /app/tmp/.triton_cache && chmod -R 777 /app/tmp/.triton_cache \\
+                            && mkdir -p /app/tmp/.triton_logs && chmod -R 777 /app/tmp/.triton_logs
 
         COPY requirements.txt .
         # Ensure pip is up-to-date and install requirements
@@ -497,6 +501,7 @@ async def submit_huggingface_training_job(
         space_secrets = {
             "HF_TOKEN_FOR_PUSH": hf_write_token,
             "TARGET_MODEL_REPO_ID": target_model_repo_id,
+            "TRITON_CACHE_DIR": str(Path("/tmp/.triton_cache")),
             "DATA_PATH_FOR_SCRIPT": hf_dataset_id_for_script, # USE THE DETERMINED HF DATASET ID
             "BASE_MODEL_ID_FOR_SCRIPT": base_model_for_script,
             "TRAINING_SCRIPT_NAME": job.training_script_config.get("training_script_name", "train_text_lora.py"),

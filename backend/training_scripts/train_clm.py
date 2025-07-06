@@ -2,8 +2,8 @@ import argparse
 import json
 import logging
 import os
-import sys
 import shutil
+import sys
 import torch
 import requests
 
@@ -23,6 +23,22 @@ from peft import (
     TaskType
 )
 
+# --- Configuration ---
+BASE_URL = os.getenv("MLOPS_BASE_URL", "https://filecoin.bnshub.org")
+MODEL_ENDPOINT = f"{BASE_URL}/mlops/models"
+
+# Hard-coded metadata for MLOps registration
+MODEL_NAME = "qwen2.5-lora"
+DESCRIPTION = "LoRA fine-tuned Qwen2.5 model for text generation."
+PROVIDER = "hugging_face"
+TAGS = ["text-generation", "qwen2.5", "lora"]
+# LoRA-specific modules to update
+LORA_TARGET_MODULES = ["q_proj", "k_proj", "v_proj"]
+
+triton_cache_dir = os.getenv("TRITON_CACHE_DIR", "/tmp/.triton_cache")
+os.makedirs(triton_cache_dir, exist_ok=True)
+os.environ["TRITON_CACHE_DIR"] = triton_cache_dir
+
 # --- Logging Setup ---
 logging.basicConfig(
     level=logging.INFO,
@@ -30,120 +46,73 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-BASE_URL = os.getenv(
-    "MLOPS_BASE_URL", "https://filecoin.bnshub.org"
-)
-MODEL_ENDPOINT = f"{BASE_URL}/mlops/models"
-
 # --- Argument Parsing ---
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="LoRA Fine-tuning Script with Causal LM")
-
-    # Core Paths
-    parser.add_argument(
-        "--data_path", type=str, required=True,
-        help="Path/URI to dataset (CSV/JSONL or HF dataset ID)."
+    parser = argparse.ArgumentParser(
+        description="LoRA Fine-tuning Script with Causal LM"
     )
-    parser.add_argument(
-        "--model_output_dir", type=str, required=True,
-        help="Directory to save LoRA adapter, tokenizer & metrics."
-    )
-
-    # Model
-    parser.add_argument(
-        "--base_model_id", type=str, required=True,
-        help="Pretrained model ID from HF Hub."
-    )
-    parser.add_argument(
-        "--model_task_type", type=str, default="CAUSAL_LM",
-        choices=["CAUSAL_LM","SEQ_2_SEQ_LM"],
-        help="PEFT TaskType."
-    )
-    parser.add_argument(
-        "--runner_environment", type=str, default="local",
-        choices=["local","huggingface","sagemaker","vertexai"],
-        help="Environment where script runs."
-    )
-
-    # Sequence & Text
-    parser.add_argument("--text_column", type=str, default="text",
-                        help="Name of text column.")
-    parser.add_argument("--max_seq_length", type=int, default=512)
-
-    # Training Hyperparams
+    parser.add_argument("--data_path", type=str, required=True,
+                        help="Path/URI to dataset (HF dataset ID).")
+    parser.add_argument("--model_output_dir", type=str, required=True,
+                        help="Directory to save LoRA adapter, tokenizer & metrics.")
+    parser.add_argument("--base_model_id", type=str, required=True,
+                        help="Pretrained model ID from HF Hub.")
     parser.add_argument("--epochs", type=int, default=3)
     parser.add_argument("--learning_rate", type=float, default=2e-4)
     parser.add_argument("--batch_size", type=int, default=4)
     parser.add_argument("--gradient_accumulation_steps", type=int, default=1)
-    parser.add_argument("--optim", type=str, default=None,
-                        help="Optimizer override.")
-
-    # LoRA Hyperparams
-    parser.add_argument("--lora_r", type=int, default=8)
-    parser.add_argument("--lora_alpha", type=int, default=16)
-    parser.add_argument("--lora_dropout", type=float, default=0.05)
-    parser.add_argument("--lora_target_modules", type=str, required=True,
-                        help="Comma-separated module names to apply LoRA (e.g., 'q_proj,k_proj').")
-
-    # Quantization Flags
-    parser.add_argument("--load_in_8bit", action="store_true",
-                        help="Enable 8-bit quantization via bitsandbytes.")
+    parser.add_argument("--runner_environment", type=str, default="local",
+                        choices=["local","huggingface","sagemaker","vertexai"],
+                        help="Environment where script runs.")
     parser.add_argument("--load_in_4bit", action="store_true",
-                        help="Enable 4-bit quantization via bitsandbytes.")
+                        help="Enable 4-bit quantization.")
+    parser.add_argument("--load_in_8bit", action="store_true",
+                        help="Enable 8-bit quantization.")
     parser.add_argument("--no_quant", action="store_true",
-                        help="Disable bitsandbytes quantization/backends.")
-
-    # JSON Overrides
+                        help="Disable quantization.")
+    # JSON for overrides
     parser.add_argument("--hyperparameters_json", type=str, default="{}",
-                        help="JSON string overriding hyperparams.")
-    parser.add_argument("--training_script_config_json", type=str, default="{}",
-                        help="JSON string overriding script configs.")
+                        help="JSON string overriding hyperparameters.")
 
-    args = parser.parse_args()
-    # Apply JSON overrides
-    for cfg, attr in [(args.hyperparameters_json, 'hyperparameters'),
-                      (args.training_script_config_json, 'script_config')]:
-        try:
-            overrides = json.loads(cfg)
-            for k, v in overrides.items():
-                logger.info(f"Overriding {k} from JSON: {v}")
-                setattr(args, k, v)
-        except json.JSONDecodeError:
-            logger.warning(f"Invalid JSON for {attr}: {cfg}")
+    parser.add_argument("--lora_r", type=int, default=8,
+                        help="LoRA rank.")
+    parser.add_argument("--lora_alpha", type=int, default=16,
+                        help="LoRA alpha.")
+    parser.add_argument("--lora_dropout", type=float, default=0.1,
+                        help="LoRA dropout.")
+
+    # Use parse_known_args to ignore any extra flags (like training_script_config_json)
+    args, unknown = parser.parse_known_args()
+    if unknown:
+        logger.warning(f"Ignoring unrecognized arguments: {unknown}")
+
+    # Apply JSON overrides to attributes
+    try:
+        overrides = json.loads(args.hyperparameters_json)
+        for k, v in overrides.items():
+            logger.info(f"Overriding {k} from JSON: {v}")
+            setattr(args, k, v)
+    except json.JSONDecodeError:
+        logger.warning("Invalid JSON for hyperparameters_json.")
 
     if args.load_in_4bit and args.load_in_8bit:
         raise ValueError("Cannot enable both 4-bit and 8-bit quantization.")
     return args
 
-# --- Utility to ensure C compiler ---
+# --- Ensure C Compiler for Quantization ---
 def ensure_c_compiler():
-    """
-    Ensure a C compiler is available or specified via CC.
-    """
     if os.getenv('CC'):
-        logger.info(f"Using C compiler from CC: {os.getenv('CC')}")
         return
     for exe in ('gcc', 'cc'):
         path = shutil.which(exe)
         if path:
             os.environ['CC'] = path
-            logger.info(f"Auto-configured CC to '{path}'")
             return
-    logger.error(
-        "No C compiler found. Quantization requires a C compiler. "
-        "Install 'gcc' or disable quantization with --no_quant."
-    )
+    logger.error("Quantization requires a C compiler. Install 'gcc' or disable quant.")
     sys.exit(1)
 
 # --- Data Loading & Tokenization ---
-def load_and_tokenize(
-    data_path: str,
-    tokenizer,
-    text_col: str,
-    max_len: int,
-    task_str: str
-) -> DatasetDict:
-    logger.info(f"Loading dataset from {data_path}")
+def load_and_tokenize(data_path: str, tokenizer, max_len: int) -> DatasetDict:
     ext = data_path.split('.')[-1]
     if ext in ('json','jsonl'):
         ds = load_dataset('json', data_files=data_path, split='train')
@@ -151,152 +120,81 @@ def load_and_tokenize(
         ds = load_dataset('csv', data_files=data_path, split='train')
     else:
         ds = load_dataset(data_path, split='train')
-
-    task = TaskType[task_str]
-    def tokenize_causal(examples):
-        return tokenizer(
-            examples[text_col], truncation=True,
-            max_length=max_len
-        )
-    if task == TaskType.CAUSAL_LM:
-        tok_ds = ds.map(
-            tokenize_causal,
-            batched=True,
-            remove_columns=ds.column_names
-        )
-    else:
-        raise ValueError(f"Unsupported task: {task}")
-
-    if 'validation' not in tok_ds:
-        splits = tok_ds.train_test_split(test_size=0.1, seed=42)
-        ds_dict = DatasetDict({
-            'train': splits['train'],
-            'validation': splits['test']
-        })
-    else:
-        ds_dict = DatasetDict(tok_ds)
-
-    logger.info(
-        f"Dataset sizes: train={len(ds_dict['train'])}, val={len(ds_dict['validation'])}"
+    tok_ds = ds.map(
+        lambda ex: tokenizer(ex['text'], truncation=True, max_length=max_len),
+        batched=True, remove_columns=ds.column_names
     )
-    return ds_dict
+    splits = tok_ds.train_test_split(test_size=0.1, seed=42)
+    return DatasetDict({'train': splits['train'], 'validation': splits['test']})
 
-
-def register_model(
-    model_name: str,
-    description: str,
-    provider: str,
-    base_model: str,
-    dataset_id: str,
-    dataset_rows: int,
-    training_config: dict,
-    tags: list,
-    metrics: dict,
-    env: str
-) -> None:
+# --- Register Model with MLOps ---
+def register_model(dataset_id: str, training_config: dict) -> None:
     payload = {
-        'name': model_name,
-        'description': description,
-        'provider': provider,
-        'base_model': base_model,
+        'name': MODEL_NAME,
+        'description': DESCRIPTION,
+        'provider': PROVIDER,
+        'base_model': BASE_MODEL_ID,
         'dataset_id': dataset_id,
         'training_config': training_config,
-        'tags': tags or [],
-        'metrics': metrics,
-        'dataset_rows': dataset_rows,
-        'environment': env
+        'tags': TAGS
     }
     try:
         resp = requests.post(MODEL_ENDPOINT, json=payload)
         resp.raise_for_status()
         logger.info(f"Model registered: {resp.json()}")
-    except Exception as e:
-        logger.error("Failed to register model", exc_info=e)
+    except Exception:
+        logger.error("Failed to register model with MLOps.", exc_info=True)
 
-# --- Main ---
+# --- Main Entry Point ---
 def main() -> None:
     args = parse_args()
-    logger.info(f"Starting LoRA fine-tuning (env={args.runner_environment})")
-    os.makedirs(args.model_output_dir, exist_ok=True)
-    os.environ['TRITON_CACHE_DIR'] = os.path.join(args.model_output_dir, 'triton_cache')
+    global BASE_MODEL_ID; BASE_MODEL_ID = args.base_model_id
 
-    # Quantization config
+    os.makedirs(args.model_output_dir, exist_ok=True)
+    os.environ['TRITON_CACHE_DIR'] = os.path.join(args.model_output_dir, '.triton')
+
+    # Setup quantization
     quant_config = None
-    if not args.no_quant:
-        if args.load_in_4bit or args.load_in_8bit:
-            ensure_c_compiler()
-            quant_kwargs = {
-                'bnb_4bit_use_double_quant': True,
-                'bnb_4bit_quant_type': 'nf4',
-                'bnb_4bit_compute_dtype': (
-                    torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
-                )
-            }
-            if args.load_in_4bit:
-                quant_kwargs['load_in_4bit'] = True
-            else:
-                quant_kwargs['load_in_8bit'] = True
-            quant_config = BitsAndBytesConfig(**quant_kwargs)
+    if not args.no_quant and (args.load_in_4bit or args.load_in_8bit):
+        ensure_c_compiler()
+        q_kwargs = {
+            'bnb_4bit_use_double_quant': True,
+            'bnb_4bit_quant_type': 'nf4',
+            'bnb_4bit_compute_dtype': torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
+        }
+        if args.load_in_4bit:
+            q_kwargs['load_in_4bit'] = True
         else:
-            logger.info("Quantization disabled; neither --load_in_4bit nor --load_in_8bit set.")
-    else:
-        logger.info("Quantization disabled via --no_quant.")
+            q_kwargs['load_in_8bit'] = True
+        quant_config = BitsAndBytesConfig(**q_kwargs)
 
     # Tokenizer
-    try:
-        tokenizer = AutoTokenizer.from_pretrained(
-            args.base_model_id, trust_remote_code=True
-        )
-    except ValueError as e:
-        logger.warning(f"Fast tokenizer error: {e}. Retrying without fast.")
-        tokenizer = AutoTokenizer.from_pretrained(
-            args.base_model_id, trust_remote_code=True, use_fast=False
-        )
-    if tokenizer.pad_token is None:
-        tokenizer.pad_token = tokenizer.eos_token
+    tokenizer = AutoTokenizer.from_pretrained(BASE_MODEL_ID, trust_remote_code=True)
+    tokenizer.pad_token = tokenizer.pad_token or tokenizer.eos_token
 
     # Model Load
     model_kwargs = {'trust_remote_code': True}
     if quant_config:
         model_kwargs['quantization_config'] = quant_config
-    try:
-        model = AutoModelForCausalLM.from_pretrained(
-            args.base_model_id, **model_kwargs
-        )
-    except Exception as e:
-        logger.warning(f"Quantized load failed: {e}. Retrying without quant.")
-        model = AutoModelForCausalLM.from_pretrained(
-            args.base_model_id, trust_remote_code=True
-        )
-
+    model = AutoModelForCausalLM.from_pretrained(BASE_MODEL_ID, **model_kwargs)
     if quant_config:
         model = prepare_model_for_kbit_training(model)
 
-    # LoRA setup
-    target_modules = [m.strip() for m in args.lora_target_modules.split(',')]
+    # LoRA Integration
     lora_cfg = LoraConfig(
         r=args.lora_r,
         lora_alpha=args.lora_alpha,
         lora_dropout=args.lora_dropout,
-        target_modules=target_modules,
+        target_modules=LORA_TARGET_MODULES,
         bias="none",
-        task_type=TaskType[args.model_task_type]
+        task_type=TaskType.CAUSAL_LM
     )
     model = get_peft_model(model, lora_cfg)
     model.print_trainable_parameters()
 
-    # Data
-    ds = load_and_tokenize(
-        args.data_path, tokenizer, args.text_column,
-        args.max_seq_length, args.model_task_type
-    )
+    # Data & Training
+    ds = load_and_tokenize(args.data_path, tokenizer, args.max_seq_length)
     data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False)
-
-    # Optimizer
-    optim_name = args.optim or ('paged_adamw_8bit' if quant_config else 'adamw_torch')
-    logger.info(f"Using optimizer: {optim_name}")
-
-    # Training arguments
     ta = TrainingArguments(
         output_dir=os.path.join(args.model_output_dir, 'checkpoints'),
         num_train_epochs=args.epochs,
@@ -305,9 +203,8 @@ def main() -> None:
         gradient_accumulation_steps=args.gradient_accumulation_steps,
         evaluation_strategy='epoch',
         save_strategy='epoch',
-        logging_dir=os.path.join(args.model_output_dir, 'logs'),
         logging_steps=10,
-        optim=optim_name,
+        optim='paged_adamw_8bit' if quant_config else 'adamw_torch',
         fp16=torch.cuda.is_available(),
         bf16=torch.cuda.is_bf16_supported(),
         report_to='tensorboard'
@@ -321,36 +218,20 @@ def main() -> None:
         data_collator=data_collator
     )
     model.config.use_cache = False
-
     trainer.train()
     trainer.save_model(args.model_output_dir)
 
     # Metrics
     history = trainer.state.log_history
-    metrics = {}
-    for entry in reversed(history):
-        if any(k.startswith('eval') for k in entry):
-            metrics = {k: v for k, v in entry.items() if isinstance(v, (int, float))}
-            break
-    metrics_path = os.path.join(args.model_output_dir, 'metrics.json')
-    with open(metrics_path, 'w') as f:
+    metrics = next((
+        {k: v for k, v in entry.items() if isinstance(v, (int, float))}
+        for entry in reversed(history) if any(k.startswith('eval') for k in entry)
+    ), {})
+    with open(os.path.join(args.model_output_dir, 'metrics.json'), 'w') as f:
         json.dump(metrics or {'status': 'no eval logs'}, f, indent=4)
-    logger.info(f"Metrics saved to {metrics_path}")
 
-    # Register model with MLOps
-    register_model(
-        model_name=args.model_name,
-        description="Text generation model fine-tuned on a custom dataset.",
-        model_uri=args.model_output_dir,
-        metrics=metrics,
-        env=args.runner_environment,
-        dataset_id=args.data_path,
-        dataset_rows=len(ds['train']),
-        training_config=args.hyperparameters,
-        base_model=args.base_model_id,
-        provider="hugging_face",
-    )
-
+    # Register with MLOps
+    register_model(dataset_id=args.data_path, training_config=json.loads(args.hyperparameters_json))
 
 if __name__ == '__main__':
     main()
