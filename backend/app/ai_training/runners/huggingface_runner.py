@@ -79,6 +79,8 @@ def _generate_dockerfile_content(script_config: Dict[str, Any]) -> str:
 
         WORKDIR /app
 
+        RUN apt-get update && apt-get install -y build-essential
+
         # Create directories and make them writable
         RUN mkdir -p /app/outputs && chmod -R 777 /app/outputs \\
             && mkdir -p /app/.cache/huggingface && chmod -R 777 /app/.cache/huggingface
