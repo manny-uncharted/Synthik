@@ -36,7 +36,8 @@ class UserExternalServiceCredentialResponse(UserExternalServiceCredentialBase):
 class AITrainingJobBase(BaseModel):
     job_name: str = PydanticField(..., min_length=3, max_length=255, description="User-defined name for the training job.")
     user_wallet_address: str = PydanticField(..., max_length=128, description="User's wallet address initiating the job.")
-    processed_dataset_id: str = PydanticField(..., description="ID of the ProcessedDataset to be used for training.")
+    dataset_url: str = PydanticField(..., max_length=2048, description="URL to the dataset to be used for training.")
+    file_type: str = PydanticField(..., max_length=50, description="Type of the file (e.g., 'csv', 'json', 'parquet', 'text').")
     platform: TrainingPlatform = PydanticField(..., description="The training platform to run the job on.")
     user_credential_id: Optional[str] = PydanticField(None, description="ID of the UserExternalServiceCredential to use for authentication with the platform (required for non-local platforms).")
     model_type: Optional[str] = PydanticField(None, max_length=100, description="Type or category of the model being trained (e.g., 'text-classification', 'image-generation').")

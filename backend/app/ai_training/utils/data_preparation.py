@@ -19,6 +19,9 @@ from google.oauth2 import service_account
 
 
 from app.core.enums.ai_training import StorageType
+from app.ai_training.utils.download import (
+    download_file,
+)
 from app.dataset.models import Dataset
 # from app.core.config import settings
 
@@ -89,118 +92,78 @@ async def _download_gcs_dataset_content(
 
 
 async def prepare_dataset_for_local_training(
-    dataset: Dataset,
-    target_input_data_dir: str, # The job's specific input_data/ directory
-    job_id: str # For logging and unique temp file naming
+    dataset_url: str,
+    target_input_data_dir: str,
+    job_id: str
 ) -> bool:
     """
-    Prepares the dataset specified in `dataset` by downloading and extracting it
-    into the `target_input_data_dir`.
+    Prepares the dataset specified in `dataset_url` by downloading and extracting it
+    into the `target_input_data_dir`. Supports local dirs, archives, and remote files.
     Returns True on success, False on failure.
     """
     await aios.makedirs(target_input_data_dir, exist_ok=True)
-    
-    # Temporary location to download archives before extraction
-    temp_download_holder = tempfile.mkdtemp(prefix=f"dataset_dl_{job_id}_")
-    downloaded_archive_path: Optional[str] = None
+
+    # Create a temporary file path for downloading
+    tmp_fd, tmp_path = tempfile.mkstemp(prefix=f"dataset_dl_{job_id}_")
+    os.close(tmp_fd)
 
     try:
-        logger.info(f"[DataPrep job_id={job_id}]: Preparing dataset '{dataset.name}' (ID: {dataset.id}) from {dataset.storage_url}")
-        
-        is_archive = dataset.storage_url.endswith((".tar.gz", ".tgz", ".zip"))
-        file_name = os.path.basename(urlparse(dataset.storage_url).path) or f"dataset_content_{job_id}"
-        
-        if is_archive:
-            downloaded_archive_path = os.path.join(temp_download_holder, file_name)
+        logger.info(f"[DataPrep job_id={job_id}]: Preparing dataset {dataset_url}")
+        parsed = urlparse(dataset_url)
+        filename = os.path.basename(parsed.path) or f"dataset_{job_id}"
+        is_archive = filename.endswith((".tar.gz", ".tgz", ".zip"))
+
+        # Download or copy source into tmp_path
+        if parsed.scheme in ("http", "https"):
+            # Remote: download to tmp
+            file_type = filename.split('.')[-1]
+            await asyncio.to_thread(download_file, dataset_url, file_type, tmp_path)
         else:
-            # If not an archive, it's a single file; download directly into target_input_data_dir
-            downloaded_archive_path = os.path.join(target_input_data_dir, file_name)
-
-
-        if dataset.storage_type == StorageType.LOCAL_FS:
-            source_path = Path(dataset.storage_url)
-            if not await aios.path.exists(source_path):
-                logger.error(f"[DataPrep job_id={job_id}]: Local dataset path {source_path} does not exist.")
+            # Local path: copy file or directory
+            src = Path(parsed.path)
+            if src.is_dir():
+                await asyncio.to_thread(shutil.copytree, str(src), target_input_data_dir, dirs_exist_ok=True)
+                return True
+            elif src.is_file():
+                await asyncio.to_thread(shutil.copy2, str(src), tmp_path)
+            else:
+                logger.error(f"[DataPrep job_id={job_id}]: Invalid local path {src}")
                 return False
 
-            if await aios.path.isdir(source_path):
-                logger.info(f"[DataPrep job_id={job_id}]: Dataset is a local directory. Copying contents from {source_path} to {target_input_data_dir}.")
-                await asyncio.to_thread(shutil.copytree, str(source_path), str(target_input_data_dir), dirs_exist_ok=True)
-                # No archive to extract, data is directly in target_input_data_dir
-                return True 
-            elif await aios.path.isfile(source_path):
-                # It's a single file (archive or raw data file)
-                dest_path_for_copy = downloaded_archive_path # This will be extracted if archive
-                await aios.makedirs(os.path.dirname(dest_path_for_copy), exist_ok=True)
-                logger.info(f"[DataPrep job_id={job_id}]: Dataset is a single local file. Copying from {source_path} to {dest_path_for_copy}.")
-                await asyncio.to_thread(shutil.copy2, str(source_path), dest_path_for_copy)
-            else: # Should not happen if exists check passed
-                logger.error(f"[DataPrep job_id={job_id}]: Local dataset path {source_path} is not a file or directory.")
-                return False
+        # Extraction if archive
+        if is_archive and Path(tmp_path).exists():
+            logger.info(f"[DataPrep job_id={job_id}]: Extracting {tmp_path}")
 
-        elif dataset.storage_type == StorageType.S3:
-            await _download_s3_dataset_content(
-                dataset.storage_url, downloaded_archive_path,
-                settings.AWS_ACCESS_KEY_ID_MLOPS.get_secret_value() if settings.AWS_ACCESS_KEY_ID_MLOPS else None,
-                settings.AWS_SECRET_ACCESS_KEY_MLOPS.get_secret_value() if settings.AWS_SECRET_ACCESS_KEY_MLOPS else None,
-                settings.AWS_REGION_MLOPS
-            )
-        elif dataset.storage_type == StorageType.GCS:
-            await _download_gcs_dataset_content(
-                dataset.storage_url, downloaded_archive_path,
-                settings.GCP_PROJECT_ID_MLOPS,
-                settings.GCP_SERVICE_ACCOUNT_KEY_PATH_MLOPS
-            )
-        elif dataset.storage_type == StorageType.WALRUS:
-            # Placeholder for Walrus download logic
-            # You would use your WalrusClient here.
-            # walrus_client = WalrusClient(...)
-            # blob_content = await walrus_client.read_blob(blob_id=dataset.storage_url) # Assuming URL is blob_id
-            # async with aiofiles.open(downloaded_archive_path, "wb") as f:
-            #    await f.write(blob_content)
-            logger.warning(f"[DataPrep job_id={job_id}]: Walrus storage type download not fully implemented yet.")
-            # For now, let's simulate failure or make it pass if testing without Walrus
-            return False # Or True if you mock success
-        else:
-            logger.error(f"[DataPrep job_id={job_id}]: Unsupported dataset storage type: {dataset.storage_type}")
-            return False
-
-        # --- Extraction (if an archive was downloaded/copied to downloaded_archive_path and it IS an archive) ---
-        if await aios.path.exists(downloaded_archive_path) and is_archive:
-            logger.info(f"[DataPrep job_id={job_id}]: Extracting archive {downloaded_archive_path} to {target_input_data_dir}")
-            
-            def _extract_sync():
-                if tarfile.is_tarfile(downloaded_archive_path):
-                    with tarfile.open(downloaded_archive_path, "r:*") as tar:
+            def extract():
+                if tarfile.is_tarfile(tmp_path):
+                    with tarfile.open(tmp_path, 'r:*') as tar:
                         tar.extractall(path=target_input_data_dir)
-                elif zipfile.is_zipfile(downloaded_archive_path):
-                    with zipfile.ZipFile(downloaded_archive_path, "r") as zip_ref:
-                        zip_ref.extractall(path=target_input_data_dir)
+                elif zipfile.is_zipfile(tmp_path):
+                    with zipfile.ZipFile(tmp_path, 'r') as zf:
+                        zf.extractall(path=target_input_data_dir)
                 else:
-                    # This case should ideally not be hit if is_archive was true.
-                    # If it's a single file that's not an archive, it might have already been
-                    # placed directly in target_input_data_dir or needs to be copied there.
-                    # The logic above for non-archives already places it in target_input_data_dir.
-                    logger.warning(f"[DataPrep job_id={job_id}]: File {downloaded_archive_path} was marked as archive but not recognized by tarfile/zipfile.")
-                    # As a fallback, copy it if it's not already in the target dir.
-                    if Path(downloaded_archive_path).parent.resolve() != Path(target_input_data_dir).resolve():
-                         shutil.copy2(downloaded_archive_path, Path(target_input_data_dir) / Path(downloaded_archive_path).name)
+                    shutil.copy2(tmp_path, os.path.join(target_input_data_dir, filename))
 
+            await asyncio.to_thread(extract)
+            logger.info(f"[DataPrep job_id={job_id}]: Extraction completed")
+        else:
+            # Not an archive: move into target dir
+            dest = Path(target_input_data_dir) / filename
+            await aios.makedirs(str(dest.parent), exist_ok=True)
+            await asyncio.to_thread(shutil.move, tmp_path, str(dest))
+            logger.info(f"[DataPrep job_id={job_id}]: File placed at {dest}")
 
-            await asyncio.to_thread(_extract_sync)
-            logger.info(f"[DataPrep job_id={job_id}]: Archive extracted successfully into {target_input_data_dir}.")
-        elif not is_archive and await aios.path.exists(downloaded_archive_path):
-            logger.info(f"[DataPrep job_id={job_id}]: Dataset was a single file, already placed at {downloaded_archive_path} within target input directory structure.")
-        elif not await aios.path.exists(downloaded_archive_path):
-            logger.error(f"[DataPrep job_id={job_id}]: Downloaded archive/file path not found: {downloaded_archive_path}")
-            return False
-            
         return True
 
     except Exception as e:
-        logger.error(f"[DataPrep job_id={job_id}]: Failed to prepare dataset: {e}", exc_info=True)
+        logger.error(f"[DataPrep job_id={job_id}]: Error preparing dataset: {e}", exc_info=True)
         return False
+
     finally:
-        if await aios.path.exists(temp_download_holder):
-            await asyncio.to_thread(shutil.rmtree, temp_download_holder)
-            logger.info(f"[DataPrep job_id={job_id}]: Cleaned up temporary download holder: {temp_download_holder}")
+        # Cleanup temp file if still exists
+        if os.path.exists(tmp_path):
+            try:
+                os.remove(tmp_path)
+                logger.info(f"[DataPrep job_id={job_id}]: Cleaned up temp file {tmp_path}")
+            except Exception:
+                pass

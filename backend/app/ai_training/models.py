@@ -55,6 +55,8 @@ class AITrainingJob(Base):
     job_name = Column(String, index=True, nullable=False)
     user_wallet_address = Column(String, index=True, nullable=False)
     platform = Column(SQLEnum(TrainingPlatform), nullable=False)
+    dataset_url = Column(String, nullable=False)
+    file_type = Column(String, nullable=False)
     user_credential_id = Column(String, ForeignKey("user_external_service_credentials.id"), nullable=True)
     user_credential = relationship("UserExternalServiceCredential", back_populates="training_jobs")
     model_type = Column(String, nullable=True)

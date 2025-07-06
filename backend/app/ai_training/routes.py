@@ -175,8 +175,6 @@ async def delete_user_credential(credential_id: str, db: Session = Depends(get_s
 # --- AI Training Jobs Endpoints (Enhanced) ---
 @ml_ops_router.post("/training-jobs", response_model=AITrainingJobResponse, status_code=status.HTTP_202_ACCEPTED) # 202 for background task
 async def create_training_job(job_in: AITrainingJobCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_session)):
-    # if not db.query(ProcessedDataset).filter(ProcessedDataset.id == job_in.processed_dataset_id).first():
-    #     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Dataset {job_in.processed_dataset_id} not found.")
     if job_in.user_credential_id:
         cred = db.query(UserExternalServiceCredential).filter(UserExternalServiceCredential.id == job_in.user_credential_id).first()
         if not cred: raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Credential {job_in.user_credential_id} not found.")
@@ -187,7 +185,6 @@ async def create_training_job(job_in: AITrainingJobCreate, background_tasks: Bac
     db_job.status = JobStatus.PENDING
     db.add(db_job); db.commit(); db.refresh(db_job)
     
-    # Use Celery here in production: send_training_job.delay(job_id=db_job.id)
     background_tasks.add_task(submit_training_job_to_platform, job_id=db_job.id, db_provider=get_session_with_ctx_manager)
     logger.info(f"AITrainingJob {db_job.id} created and submission task queued.")
     return AITrainingJobResponse.from_orm(db_job) # Return immediately with PENDING status

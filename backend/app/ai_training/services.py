@@ -35,6 +35,7 @@ from app.ai_training.runners.huggingface_runner import submit_huggingface_traini
 from app.ai_training.models import AITrainingJob, Model
 from app.ai_training.schemas import ModelCreate
 from app.core.exceptions import NotFoundError
+from app.ai_training.utils.download import download_file
 from app.core.logger import logger
 
 
@@ -95,15 +96,15 @@ async def submit_training_job_to_platform(job_id: str, db_provider: Callable[[],
                 logger.error(f"Background task (job_id: {job_id}): Job not found. Cannot submit.")
                 return
 
-            if not job.processed_dataset:
-                logger.error(f"Background task (job_id: {job.id}): ProcessedDataset not found.")
+            if not job.dataset_url:
+                logger.error(f"Background task (job_id: {job.id}): Dataset URL not found.")
                 job.status = JobStatus.FAILED
-                job.error_message = "ProcessedDataset not found for the job."
+                job.error_message = "Dataset URL not found for the job."
                 job.completed_at = datetime.now(timezone.utc)
                 db.commit()
                 return
             
-            if job.user_credential_id and not job.user_credential:
+            if job.platform != TrainingPlatform.LOCAL_SERVER and not job.user_credential_id:
                 logger.error(f"Background task (job_id: {job.id}): UserCredential specified but not found (ID: {job.user_credential_id}).")
                 job.status = JobStatus.FAILED
                 job.error_message = f"UserCredential ID {job.user_credential_id} not found."
@@ -153,17 +154,17 @@ async def submit_training_job_to_platform(job_id: str, db_provider: Callable[[],
                 # job.processed_dataset should be loaded if needed, or ensure it's loaded before this call
                 # The initial query for job in this service should ideally eager load job.processed_dataset
                 # For example, using: options(selectinload(ai_models.AITrainingJob.processed_dataset))
-                if not job.processed_dataset: # Defensive check
+                if not job.dataset_url: # Defensive check
                     # This should have been caught earlier in the service function
-                    logger.error(f"[Service job_id={job.id}]: ProcessedDataset not loaded on job object.")
+                    logger.error(f"[Service job_id={job.id}]: Dataset URL not loaded on job object.")
                     job.status = JobStatus.FAILED
-                    job.error_message = "Internal Error: ProcessedDataset not loaded for local training prep."
+                    job.error_message = "Internal Error: Dataset URL not loaded for local training prep."
                     job.completed_at = datetime.now(timezone.utc)
                     await db.commit()
                     return
 
                 dataset_prepared = await prepare_dataset_for_local_training(
-                    dataset=job.processed_dataset,
+                    dataset_url=job.dataset_url,
                     target_input_data_dir=str(input_data_dir.resolve()),
                     job_id=job.id
                 )
@@ -265,63 +266,27 @@ async def submit_training_job_to_platform(job_id: str, db_provider: Callable[[],
             elif job.platform == TrainingPlatform.HUGGING_FACE:
                 logger.info(f"[Service job_id={job.id}]: Submitting to Hugging Face (via Space creation).")
                 
-                if not job.processed_dataset.storage_url:
+                if not job.dataset_url:
                     error_message_from_platform = "Processed dataset's Akave storage URL is missing."
                     logger.error(f"[Service job_id={job.id}]: {error_message_from_platform}")
                     # The error handling logic at the end of the function will catch this.
                 else:
-                    dataset_akave_url = job.processed_dataset.storage_url
-                    print(f"[Service job_id={job.id}]: Dataset Akave URL: {dataset_akave_url}")
-                    dataset_blob_id: Optional[str] = None
-                    try:
-                        dataset_blob_id = dataset_akave_url.split("/")[-1]
-                        print(f"[Service job_id={job.id}]: Parsed dataset blob_id: {dataset_blob_id}")
-                        if not dataset_blob_id: # Handle cases like trailing slash or empty segment
-                            raise ValueError("Parsed blob_id is empty.")
-                    except Exception as e:
-                        error_message_from_platform = f"Invalid dataset storage URL format ('{dataset_akave_url}'). Cannot extract blob_id. Error: {e}"
-                        logger.error(f"[Service job_id={job.id}]: {error_message_from_platform}")
-                        # Error will be handled by the common block below
-
-                    if dataset_blob_id: # Proceed only if blob_id was successfully parsed
-                        print(f"[Service job_id={job.id}]: Proceeding with dataset blob_id: {dataset_blob_id}")
+                    
+                    if job.dataset_url:
+                        print(f"[Service job_id={job.id}]: Proceeding with dataset blob_id: {job.dataset_url}")
                         temp_dataset_download_dir: Optional[str] = None
                         local_dataset_path_for_hf: Optional[Path] = None
                         try:
                             print(f"[Service job_id={job.id}]: Creating temporary download directory for dataset...")
                             temp_dataset_download_dir = tempfile.mkdtemp(prefix=f"hf_dataset_job_{job.id}_")
                             print(f"[Service job_id={job.id}]: Temporary download directory created: {temp_dataset_download_dir}")
-                            
-                            file_ext = ".tmp" # Default extension if not found or invalid
-                            
-                            # job.processed_dataset should be the already loaded ProcessedDataset ORM object
-                            if job.processed_dataset:
-                                print(f"[Service job_id={job.id}]: Processing dataset metadata...")
-                                if job.processed_dataset.metadata_ and isinstance(job.processed_dataset.metadata_, dict):
-                                    print(f"[Service job_id={job.id}]: Dataset metadata is a dictionary.")
-                                    retrieved_ext = job.processed_dataset.metadata_.get('processed_file_type')
-                                    print(f"[Service job_id={job.id}]: Retrieved extension from metadata: '{retrieved_ext}'")
-                                    if retrieved_ext and isinstance(retrieved_ext, str):
-                                        file_ext = retrieved_ext
-                                        print(f"[Service job_id={job.id}]: Using 'processed_file_type' from dataset metadata: '{file_ext}'")
-                                    else:
-                                        print(f"[Service job_id={job.id}]: 'processed_file_type' key not found or invalid in dataset metadata. Metadata content: {job.processed_dataset.metadata_}. Defaulting extension to '.tmp'.")
-                                # As a fallback, check if processed_file_type is a direct attribute (less likely based on your JSON)
-                                elif hasattr(job.processed_dataset, 'processed_file_type') and job.processed_dataset.processed_file_type and isinstance(job.processed_dataset.processed_file_type, str):
-                                    file_ext = job.processed_dataset.processed_file_type
-                                    print(f"[Service job_id={job.id}]: Using direct 'processed_file_type' attribute from dataset: '{file_ext}'")
-                                else:
-                                    print(f"[Service job_id={job.id}]: Dataset metadata is missing or not a dictionary, or 'processed_file_type' attribute is missing/invalid. Defaulting extension to '.tmp'.")
-                            else:
-                                # This case should ideally be caught earlier (e.g., when job is loaded)
-                                logger.error(f"[Service job_id={job.id}]: Critical error - job.processed_dataset is None. Defaulting extension to '.tmp'.")
-                            
+
                             # Ensure file_ext starts with a dot if it's a simple extension name and not empty
-                            if file_ext and not file_ext.startswith("."):
-                                file_ext = "." + file_ext
-                            safe_blob_filename_part = Path(dataset_blob_id).name # Basic sanitization
+                            if job.file_type and not job.file_type.startswith("."):
+                                job.file_type = "." + job.file_type
+                            safe_blob_filename_part = Path(job.dataset_url.split("/")[-1]).name # Basic sanitization
                             print(f"[Service job_id={job.id}]: Safe blob filename part: '{safe_blob_filename_part}'")
-                            temp_filename = f"{safe_blob_filename_part}{file_ext}"
+                            temp_filename = f"{safe_blob_filename_part}{job.file_type}"
                             print(f"[Service job_id={job.id}]: Temporary filename: '{temp_filename}'")
                             
                             local_dataset_path_for_hf = Path(temp_dataset_download_dir) / temp_filename
@@ -329,9 +294,10 @@ async def submit_training_job_to_platform(job_id: str, db_provider: Callable[[],
                             
                             print(f"[Service job_id={job.id}]: Downloading dataset blob '{dataset_blob_id}' from Akave to '{local_dataset_path_for_hf}'")
                             
-                            async with AkaveLinkAPI() as akave_client: # Ensure AkaveLinkAPI is correctly initialized
-                                await akave_client.download_file(blob_id=dataset_blob_id, output_path=local_dataset_path_for_hf)
-                            
+                            # async with AkaveLinkAPI() as akave_client: # Ensure AkaveLinkAPI is correctly initialized
+                            #     await akave_client.download_file(blob_id=dataset_blob_id, output_path=local_dataset_path_for_hf)
+                            await download_file(job.dataset_url, job.file_type, local_dataset_path_for_hf)
+
                             if not local_dataset_path_for_hf.exists() or local_dataset_path_for_hf.stat().st_size == 0:
                                 raise FileNotFoundError(f"Downloaded dataset file '{local_dataset_path_for_hf}' is missing or empty.")
                             
