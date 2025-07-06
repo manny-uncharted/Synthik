@@ -144,6 +144,11 @@ def main():
     logger.info(f"Starting LoRA fine-tuning, environment={args.runner_environment}")
     os.makedirs(args.model_output_dir, exist_ok=True)
 
+    os.environ['TRITON_CACHE_DIR'] = os.path.join(args.model_output_dir, 'triton_cache')
+
+    logger.info(f"Starting LoRA fine-tuning, environment={args.runner_environment}")
+    os.makedirs(args.model_output_dir, exist_ok=True)
+
     # Tokenizer
     try:
         tokenizer = AutoTokenizer.from_pretrained(
