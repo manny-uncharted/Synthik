@@ -166,7 +166,11 @@ export default function DatasetParameters({
             </label>
             <select
               value={config.format}
-              onChange={(e) => updateConfig({ format: e.target.value as any })}
+              onChange={(e) =>
+                updateConfig({
+                  format: e.target.value as 'json' | 'csv' | 'parquet',
+                })
+              }
               className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-indigo-500 transition-colors"
             >
               <option value="json">JSON</option>
@@ -193,7 +197,7 @@ export default function DatasetParameters({
         </div>
 
         <div className="space-y-3">
-          {config.schema.map((field, index) => (
+          {config.schema.map((field) => (
             <motion.div
               key={field.id}
               initial={{ opacity: 0, y: 10 }}
@@ -291,7 +295,11 @@ export default function DatasetParameters({
           {['fast', 'balanced', 'high'].map((quality) => (
             <button
               key={quality}
-              onClick={() => updateConfig({ quality: quality as any })}
+              onClick={() =>
+                updateConfig({
+                  quality: quality as 'fast' | 'balanced' | 'high',
+                })
+              }
               className={`px-4 py-3 rounded-lg border-2 transition-all capitalize ${
                 config.quality === quality
                   ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
