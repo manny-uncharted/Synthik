@@ -177,8 +177,10 @@ trainer = dataset.get_trainer(
                 Start Building <ArrowUpRight className="w-4 h-4" />
               </Link>
               <Link
-                href="/docs"
+                href="https://github.com/Ghost-xDD/Synthik"
                 className="px-8 py-4 glass-card rounded-lg font-medium hover:bg-gray-50 transition-colors"
+                target="_blank"
+                rel="noopener noreferrer"
               >
                 View Documentation
               </Link>

@@ -71,6 +71,8 @@ Today's AI revolution runs on invisible data and opaque models:
 
 **One-Click Training Pipelines** - When you initiate model training, FilCDN streams the encrypted dataset (with validated on-chain licenses), decrypts at the edge, and pipes it directly into Hugging Face, Google Vertex AI or AWS SageMaker for fine-tuning—no manual ETL required.
 
+**Streamlined UX for Non-Crypto Users with Privy** – While powered by Filecoin, our interface feels familiar to traditional SaaS users. Sign in with Google, Twitter, GitHub, or email—no wallet setup required. The platform abstracts away crypto complexity while maintaining full decentralization benefits under the hood.
+
 All accompanying training scripts, configuration files and runtime metadata are likewise logged and stored on Filecoin via the Synapse SDK for full reproducibility and auditability.
 
 ## 🔗 Filecoin Integration
@@ -282,6 +284,7 @@ trainer = dataset.get_trainer(
     model=model,
     track_lineage=True,  # Automatic Filecoin storage
     compute_target="vertex-ai"  # Or "sagemaker", "lightning"
+)
 ```
 
 ## 🏃‍♂️ Getting Started
