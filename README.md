@@ -184,22 +184,6 @@ trainer = dataset.get_trainer(
 4. **Configure Environment**: Set up `.env` files with your credentials
 5. **Start Development**: `npm run dev` (frontend) and `make run` (backend)
 
-### **Example Usage**
-
-```bash
-# Generate a synthetic dataset
-curl -X POST "http://localhost:8000/generation/generate" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Customer Data",
-    "rows": 1000,
-    "schema": [
-      {"name": "name", "type": "string"},
-      {"name": "email", "type": "string"},
-      {"name": "age", "type": "number"}
-    ]
-  }'
-```
 
 ## 🤝 Contributing
 
