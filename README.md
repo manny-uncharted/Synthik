@@ -59,49 +59,6 @@ Today's AI revolution runs on invisible data and opaque models:
 
 All accompanying training scripts, configuration files and runtime metadata are likewise logged and stored on Filecoin via the Synapse SDK for full reproducibility and auditability.
 
-## 🏗️ Technology Stack
-
-### **Blockchain & Storage**
-
-- **Filecoin**: Decentralized storage network for dataset persistence
-- **Filecoin Virtual Machine (FVM)**: Smart contract execution environment
-- **FilCDN**: Content delivery network for fast data access
-- **IPFS**: Distributed file system for metadata and smaller files
-- **Synapse SDK**: Filecoin storage and retrieval optimization
-
-### **Smart Contracts**
-
-- **ProvenanceManager**: Core dataset creation and lineage tracking
-- **DatasetRegistry**: Access control and relationship management
-- **DatasetMarketplace**: Economic layer for buying/selling datasets
-- **AutoAccessManager**: Automated access granting based on rules
-
-### **AI & Machine Learning**
-
-- **OpenAI Integration**: GPT-4 Turbo, GPT-4o Mini for high-quality generation
-- **Google Gemini**: Gemini 1.5 Flash/Pro for fast, large-context generation
-- **Anthropic Claude**: Advanced reasoning and safety-focused generation
-- **Atoma Network**: Decentralized inference for cost-effective generation
-- **Training Platforms**: AWS SageMaker, Google Vertex AI, Hugging Face
-
-### **Frontend Technology**
-
-- **Next.js 15**: React-based web application framework
-- **TypeScript**: Type-safe development environment
-- **Tailwind CSS**: Utility-first styling framework
-- **Privy**: Web3 authentication and wallet management
-- **Wagmi/Viem**: Ethereum interaction libraries
-- **Framer Motion**: Advanced animations and interactions
-
-### **Backend Infrastructure**
-
-- **FastAPI**: High-performance Python web framework
-- **SQLAlchemy**: Database ORM with PostgreSQL support
-- **Redis**: Caching and session management
-- **Celery**: Distributed task processing
-- **LangChain**: LLM orchestration and tool integration
-- **LangGraph**: Multi-agent workflow management
-
 ## 🔗 Filecoin Integration
 
 | Component                 | Description                                                                        | Key Features                                                                                                                                                                                                                                                                                    |
@@ -118,43 +75,6 @@ All accompanying training scripts, configuration files and runtime metadata are 
 | FIL Faucet   | [faucet.calibration.fildev.network](https://faucet.calibration.fildev.network/)                                    |
 | USDFC Faucet | [forest-explorer.chainsafe.dev/faucet/calibnet_usdfc](https://forest-explorer.chainsafe.dev/faucet/calibnet_usdfc) |
 
-## 🌟 Key Features
-
-### **Dataset Generation**
-
-- **Multi-Modal Support**: Text, tabular, and structured data generation
-- **Industry Templates**: Pre-built schemas for e-commerce, healthcare, finance
-- **Custom Schemas**: Flexible field definitions with constraints and validation
-- **Batch Processing**: Efficient large-scale dataset generation
-- **Quality Control**: Automated validation and consistency checking
-
-### **Blockchain Integration**
-
-- **Immutable Records**: All dataset metadata stored on Filecoin blockchain
-- **Smart Contracts**: Automated licensing, payments, and access control
-- **Cryptographic Proofs**: Merkle tree validation for data integrity
-- **Event Tracking**: Complete audit trail of all dataset operations
-
-### **Marketplace Features**
-
-- **Dynamic Pricing**: Flexible pricing models including per-row and fixed pricing
-- **License Management**: Support for multiple license types and usage terms
-- **Royalty System**: Automatic revenue sharing for dataset creators
-- **Search & Discovery**: Advanced filtering and recommendation system
-
-### **Enterprise Tools**
-
-- **Multi-Agent Workflows**: Automated quality assurance and verification
-- **Training Integration**: Direct connection to major ML training platforms
-- **API Access**: Comprehensive REST APIs and SDKs
-- **Analytics Dashboard**: Usage metrics and revenue tracking
-
-### **Privacy & Compliance**
-
-- **Data Anonymization**: Built-in privacy-preserving transformations
-- **Compliance Support**: GDPR, HIPAA, and other regulatory frameworks
-- **Access Controls**: Role-based permissions and time-limited access
-- **Audit Trails**: Complete history of data access and usage
 
 ## 🛠️ SDKs & Integration
 
@@ -235,20 +155,6 @@ curl -X POST "http://localhost:8000/generation/generate" \
   }'
 ```
 
-## 🌐 Network Information
-
-### **Filecoin Calibration Testnet**
-
-- **RPC URL**: `https://api.calibration.node.glif.io/rpc/v1`
-- **Chain ID**: 314159
-- **Faucet**: https://faucet.calibration.fildev.network/
-
-### **Deployed Contracts**
-
-- **ProvenanceManager**: `0x29D8445d30d1a3d48dAcAdAf84b4F71FEd7E0930`
-- **DatasetRegistry**: `0xCf296AbB8055263E56d9eD507bB221C5F4899646`
-- **DatasetMarketplace**: `0xC06182A35AECb648Bc30514905aD8A156Bf7dffc`
-- **AutoAccessManager**: `0x1EE7E24CD49E2347f73880a259f28950d0B6fB85`
 
 ## 🤝 Contributing
 
@@ -266,8 +172,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🔗 Links
 
 - **Website**: https://synthik.io
-- **Documentation**: https://docs.synthik.ai
-- **GitHub**: https://github.com/synthik
+- **GitHub**: [https://github.com/synthik](https://github.com/Ghost-xDD/Synthik)
 
 ---
 
