@@ -97,6 +97,16 @@ export default function Layout({ children }: LayoutProps) {
               >
                 Models
               </Link>
+              <Link
+                href="/profile"
+                className={`text-sm transition-colors ${
+                  isActive('/profile')
+                    ? 'font-medium text-indigo-600'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Profile
+              </Link>
             </nav>
 
             {!isLoading ? (

@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Version](https://img.shields.io/badge/version-1.0.0-blue)](https://github.com/your-org/datahive/releases)
 
-## **Verifiable Synthetic Data for Trustworthy AI on Filecon**
+## **Verifiable Synthetic Data for Trustworthy AI on Filecoin**
 
 Synthik is a decentralized platform that revolutionizes how synthetic datasets are created, shared, and monetized while ensuring complete provenance tracking and verifiability.
 
