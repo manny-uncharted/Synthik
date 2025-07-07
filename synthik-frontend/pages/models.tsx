@@ -26,7 +26,7 @@ const mockModels = [
     datasetUsed: 'financial-news-10k',
     datasetRows: 1000,
     trainedBy: 'alice.eth',
-    trainedDate: '30 mins ago',
+    trainedDate: '2 days ago',
     accuracy: 90.2,
     downloads: 10,
     stars: 2,
