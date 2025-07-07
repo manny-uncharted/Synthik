@@ -94,7 +94,7 @@ All accompanying training scripts, configuration files and runtime metadata are 
 
 [![npm version](https://img.shields.io/npm/v/@ghostxd/synthik-sdk.svg)](https://www.npmjs.com/package/@ghostxd/synthik-sdk)
 
-Install the SDK to integrate Synthik into your existing workflows:
+We also built an SDK to help integrate Synthik's synthetic data and provenance into your existing workflows:
 
 [Npm Package](https://www.npmjs.com/package/@ghostxd/synthik-sdk)
 
@@ -141,15 +141,31 @@ We're actively developing a Python SDK to bring the same seamless integration to
 
 ```python
 from synthik import SynthikClient
+import datasets
 
-client = SynthikClient(
-    private_key="YOUR_PRIVATE_KEY",
-    network="calibration"
+# Initialize Synthik client
+client = SynthikClient(api_key="your_api_key")
+
+# Generate synthetic dataset with on-chain provenance
+dataset = client.generate(
+    prompt="Medical diagnosis records with patient symptoms",
+    size=10000,
+    schema={"symptoms": "text", "diagnosis": "label"},
+    verify_on_chain=True
 )
 
-# Create and train model
-dataset = client.create_dataset(data, config)
-model = client.train_model(dataset_id, training_config)
+# Direct integration with Hugging Face
+dataset.push_to_hub("your-org/medical-synthetic-data")
+
+# Load and fine-tune with blockchain verification
+from transformers import AutoModelForSequenceClassification
+model = AutoModelForSequenceClassification.from_pretrained("bert-base")
+
+# Training includes on-chain provenance tracking
+trainer = dataset.get_trainer(
+    model=model,
+    track_lineage=True,  # Automatic Filecoin storage
+    compute_target="vertex-ai"  # Or "sagemaker", "lightning"
 ```
 
 ## 🏃‍♂️ Getting Started
