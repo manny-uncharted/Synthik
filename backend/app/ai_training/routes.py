@@ -204,6 +204,7 @@ async def create_training_job(job_in: AITrainingJobCreate, background_tasks: Bac
         if cred.platform != job_in.platform: raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Credential/Job platform mismatch.")
         if cred.user_wallet_address != job_in.user_wallet_address: raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Credential does not belong to user.")
     
+    job_in.dataset_url = "https://0x311e26702aba231c321c633d1ff6ecb4445f2308.calibration.filcdn.io/baga6ea4seaqhv7zvx7ykx6pady5fk5fbz422ohupjgd6vvzwwjnlotgs22lzqka"
     db_job = AITrainingJob(**job_in.model_dump())
     db_job.status = JobStatus.PENDING
     db.add(db_job); db.commit(); db.refresh(db_job)
