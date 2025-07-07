@@ -14,6 +14,7 @@ Built on Filecoin's infrastructure, Synthik enables AI researchers, data scienti
 
 - [🎯 Problem Statement](#-problem-statement)
 - [🚀 Our Solution](#-our-solution)
+- [🎯 Proof of Concept: Pythia-70M Finance LoRA](#-proof-of-concept-pythia-70m-finance-lora)
 - [🔗 Filecoin Integration](#-filecoin-integration)
 - [🔗 Blockchain Provenance Architecture](#-blockchain-provenance-architecture)
 - [🛠️ SDKs & Integration](#️-sdks--integration)
@@ -55,13 +56,14 @@ Today's AI revolution runs on invisible data and opaque models:
 
 ## 🚀 Our Solution
 
-
 ### **LLM-Powered Synthetic Data Generation**:
-- Feed Synthik a schema and field-level constraints to generate, augment or anonymize datasets. 
+
+- Feed Synthik a schema and field-level constraints to generate, augment or anonymize datasets.
 
 - Our multi-LLM engine (OpenAI, Gemini, Claude, Lilypad) returns production-ready, statistically diverse rows in minutes—then uploads the encrypted payload and metadata to Filecoin via the Synapse SDK with built-in Proof-of-Data-Possession.
 
 ### **Autonomous Quality Gate**:
+
 - LLM agents validate every submission for accuracy, diversity, and schema fit; only datasets that pass are signed on-chain for tamper-proof authenticity.
 
 ### **Privacy-First Storage & Instant Delivery**:
@@ -70,10 +72,12 @@ Today's AI revolution runs on invisible data and opaque models:
 - **Lineage & Preview Fetch**: **FilCDN** delivers schema, lineage and preview data to UIs and validation agents before any download.
 - Merkle proofs plus time-boxed, key-gated access keep raw content secure and compliant.
 
-### **Immutable Lineage** 
+### **Immutable Lineage**
+
 - Every generation, transformation, license, and model run is immutably recorded, delivering audit-ready provenance for regulators and customers alike.
 
-### **On-Chain $USDFC Rewards** 
+### **On-Chain $USDFC Rewards**
+
 - Smart contracts escrow payments, distribute royalties, and enforce license terms automatically—creators get paid the moment a dataset is purchased.
 
 ### **One-Click Training Pipelines**
@@ -84,9 +88,20 @@ Today's AI revolution runs on invisible data and opaque models:
 
 ### **Streamlined UX for Non-Crypto Users with [Privy](https://www.privy.io/)**
 
--  While powered by **Filecoin**, our interface feels familiar to traditional SaaS users. Sign in with Google, Twitter, Passkeys, or email—no wallet setup required. The platform abstracts away crypto complexity while maintaining full decentralization benefits under the hood.
+- While powered by **Filecoin**, our interface feels familiar to traditional SaaS users. Sign in with Google, Twitter, Passkeys, or email—no wallet setup required. The platform abstracts away crypto complexity while maintaining full decentralization benefits under the hood.
 
+## 🎯 Proof of Concept: Pythia-70M Finance LoRA
 
+**End-to-End Success**: We've demonstrated the complete Synthik pipeline with a real financial AI model.
+
+✅ **Generated** synthetic financial dataset → [View Dataset](https://www.synthik.io/datasets/36db6f48-0e63-43b5-a9d8-0252b8137835)  
+✅ **Listed** on decentralized marketplace with smart contracts  
+✅ **Purchased** via USDFC with automatic royalty distribution  
+✅ **Trained** Pythia-70M model with LoRA → [Model Lineage](https://www.synthik.io/models/elut-70m-finance-lora)  
+✅ **Deployed** to Hugging Face → [Testys/Pythia-70M-Finance-LoRA](https://huggingface.co/Testys/Pythia-70M-Finance-LoRA)  
+✅ **Tracked** complete provenance on Filecoin with cryptographic proof
+
+**Result**: Verifiable synthetic data with complete audit trail from generation to production deployment.
 
 ## 🔗 Filecoin Integration
 
@@ -218,6 +233,7 @@ Production Model CID: bafybeiprod...
 - **Quality Attestation**: Verifier signatures on quality metrics
 
 #### _This architecture ensures that every piece of synthetic data can be traced from its initial generation through all transformations, training runs, and production usage_.
+
 =======
 ## 🔗 Filecoin Integration
 
@@ -343,7 +359,6 @@ trainer = dataset.get_trainer(
 3. **Install Dependencies**: `npm install` (frontend) and `poetry install` (backend)
 4. **Configure Environment**: Set up `.env` files with your credentials
 5. **Start Development**: `npm run dev` (frontend) and `make run` (backend)
-
 
 ## 🤝 Contributing
 
