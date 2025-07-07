@@ -45,10 +45,11 @@ Today's AI revolution runs on invisible data and opaque models:
 
 **Autonomous Quality Gate** – LLM agents validate every submission for accuracy, diversity, and schema fit; only datasets that pass are signed on-chain for tamper-proof authenticity.
 
-**Privacy-First Storage & Instant Delivery** – 
-  - Encrypted Uploads & Provenance: **Synapse SDK** + **FilCDN** uploads full datasets, previews and metadata to Filecoin with verifiable Proof of Data Possession.
-  - Lineage & Preview Fetch: **FilCDN** delivers schema, lineage and preview data to UIs and validation agents before any download.
-  - Merkle proofs plus time-boxed, key-gated access keep raw content secure and compliant.
+**Privacy-First Storage & Instant Delivery** –
+
+- Encrypted Uploads & Provenance: **Synapse SDK** + **FilCDN** uploads full datasets, previews and metadata to Filecoin with verifiable Proof of Data Possession.
+- Lineage & Preview Fetch: **FilCDN** delivers schema, lineage and preview data to UIs and validation agents before any download.
+- Merkle proofs plus time-boxed, key-gated access keep raw content secure and compliant.
 
 **Immutable Lineage** – Every generation, transformation, license, and model run is immutably recorded, delivering audit-ready provenance for regulators and customers alike.
 
@@ -100,6 +101,22 @@ All accompanying training scripts, configuration files and runtime metadata are 
 - **Celery**: Distributed task processing
 - **LangChain**: LLM orchestration and tool integration
 - **LangGraph**: Multi-agent workflow management
+
+## 🔗 Filecoin Integration
+
+| Component                 | Description                                    | Key Features                                                                                                                                                                                                                                                                                    |
+| ------------------------- | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Synapse SDK**           | Optimized Filecoin storage operations by Filoz | • Automated proof set management<br>• Smart provider selection<br>• USDFC payment abstraction<br>• CDN integration support                                                                                                                                                                      |
+| **FilCDN**                | Content delivery network for fast data access  | • Direct HTTPS access (no wallet needed)<br>• Global edge caching<br>• URL pattern: `https://{address}.calibration.filcdn.io/{cid}`                                                                                                                                                             |
+| **Smart Contracts (FVM)** | EVM-compatible contracts on Filecoin           | • **ProvenanceManager**: `0x29D8445d30d1a3d48dAcAdAf84b4F71FEd7E0930`<br>• **DatasetRegistry**: `0xCf296AbB8055263E56d9eD507bB221C5F4899646`<br>• **DatasetMarketplace**: `0xC06182A35AECb648Bc30514905aD8A156Bf7dffc`<br>• **AutoAccessManager**: `0x1EE7E24CD49E2347f73880a259f28950d0B6fB85` |
+| **USDFC Token**           | Primary payment token                          | • Address: `0xb3042734b608a1B16e9e86B374A3f3e389B4cDf0`<br>• Decimals: 18<br>• Used for: Dataset purchases, storage fees, royalties                                                                                                                                                             |
+
+### Testnet Resources
+
+| Resource     | Link                                                                                                               |
+| ------------ | ------------------------------------------------------------------------------------------------------------------ |
+| FIL Faucet   | [faucet.calibration.fildev.network](https://faucet.calibration.fildev.network/)                                    |
+| USDFC Faucet | [forest-explorer.chainsafe.dev/faucet/calibnet_usdfc](https://forest-explorer.chainsafe.dev/faucet/calibnet_usdfc) |
 
 ## 🌟 Key Features
 
