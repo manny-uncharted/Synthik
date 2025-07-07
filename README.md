@@ -96,6 +96,8 @@ All accompanying training scripts, configuration files and runtime metadata are 
 
 Install the SDK to integrate Synthik into your existing workflows:
 
+[Npm Package](https://www.npmjs.com/package/@ghostxd/synthik-sdk)
+
 ```bash
 npm install @ghostxd/synthik-sdk
 # or
