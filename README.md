@@ -68,7 +68,7 @@ Today's AI revolution runs on invisible data and opaque models:
 
 **On-Chain $USDFC Rewards** – Smart contracts escrow payments, distribute royalties, and enforce license terms automatically—creators get paid the moment a dataset is purchased.
 
-**One-Click Training Pipelines** - When you initiate model training, FilCDN streams the encrypted dataset (with validated on-chain licenses), decrypts at the edge, and pipes it directly into AWS SageMaker, Google Vertex AI or Hugging Face for fine-tuning—no manual ETL required.
+**One-Click Training Pipelines** - When you initiate model training, FilCDN streams the encrypted dataset (with validated on-chain licenses), decrypts at the edge, and pipes it directly into Hugging Face, Google Vertex AI or AWS SageMaker for fine-tuning—no manual ETL required.
 
 All accompanying training scripts, configuration files and runtime metadata are likewise logged and stored on Filecoin via the Synapse SDK for full reproducibility and auditability.
 
