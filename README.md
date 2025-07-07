@@ -41,17 +41,22 @@ Today's AI revolution runs on invisible data and opaque models:
 
 ## 🚀 Our Solution
 
-**AI-Powered Synthetic Data Generation** – Feed Synthik with a schema and field-level constraints, then choose your flow: generate data from scratch, augment an existing file, start from an industry-specific template, or transform & anonymize a sensitive dataset. Our multi-LLM engine (GPT-4, Gemini, Claude, Lilypad) returns production-ready, statistically diverse rows in minutes.
+**LLM-Powered Synthetic Data Generation** – Feed Synthik a schema and field-level constraints to generate, augment or anonymize datasets. Our multi-LLM engine (GPT-4, Gemini, Claude, Lilypad) returns production-ready, statistically diverse rows in minutes—then uploads the encrypted payload and metadata to Filecoin via the Synapse SDK with built-in Proof-of-Data-Possession.
 
 **Autonomous Quality Gate** – LLM agents validate every submission for accuracy, diversity, and schema fit; only datasets that pass are signed on-chain for tamper-proof authenticity.
 
-**Privacy-First Storage** – Data lives on Filecoin with FilCDN acceleration. Merkle proofs plus time-boxed, key-gated access keep raw content secure and compliant.
+**Privacy-First Storage & Instant Delivery** – 
+  - Encrypted Uploads & Provenance: **Synapse SDK** + **FilCDN** uploads full datasets, previews and metadata to Filecoin with verifiable Proof of Data Possession.
+  - Lineage & Preview Fetch: **FilCDN** delivers schema, lineage and preview data to UIs and validation agents before any download.
+  - Merkle proofs plus time-boxed, key-gated access keep raw content secure and compliant.
 
 **Immutable Lineage** – Every generation, transformation, license, and model run is immutably recorded, delivering audit-ready provenance for regulators and customers alike.
 
 **On-Chain $USDFC Rewards** – Smart contracts escrow payments, distribute royalties, and enforce license terms automatically—creators get paid the moment a dataset is purchased.
 
-**One-Click Training Pipelines 📦** – When model training is initiated, verified datasets are fetched from Filecoin using FilCDN, automatically preprocessed and validated, then fed directly into AWS SageMaker, Google Vertex AI, or Hugging Face for training and deployment—no manual ETL required.
+**One-Click Training Pipelines** - When you initiate model training, FilCDN streams the encrypted dataset (with validated on-chain licenses), decrypts at the edge, and pipes it directly into AWS SageMaker, Google Vertex AI or Hugging Face for fine-tuning—no manual ETL required.
+
+All accompanying training scripts, configuration files and runtime metadata are likewise logged and stored on Filecoin via the Synapse SDK for full reproducibility and auditability.
 
 ## 🏗️ Technology Stack
 
