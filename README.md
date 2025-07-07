@@ -217,12 +217,8 @@ Production Model CID: bafybeiprod...
 - **Lineage Tracking**: Complete parent-child relationships for transformed datasets
 - **Quality Attestation**: Verifier signatures on quality metrics
 
-This architecture ensures that every piece of synthetic data can be traced from its initial generation through all transformations, training runs, and production usage—providing the transparency and auditability required for trustworthy AI systems.
+#### _This architecture ensures that every piece of synthetic data can be traced from its initial generation through all transformations, training runs, and production usage_.
 =======
-**One-Click Training Pipelines** - When you initiate model training, FilCDN streams the encrypted dataset (with validated on-chain licenses), decrypts at the edge, and pipes it directly into Hugging Face, Google Vertex AI or AWS SageMaker for fine-tuning—no manual ETL required.
-
-All accompanying training scripts, configuration files and runtime metadata are likewise logged and stored on Filecoin via the Synapse SDK for full reproducibility and auditability.
-
 ## 🔗 Filecoin Integration
 
 | Component                 | Description                                                                        | Key Features                                                                                                                                                                                                                                                                                    |
