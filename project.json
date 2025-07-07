@@ -1,0 +1,42 @@
+{
+  "name": "Synthik",
+  "tagline": "Decentralized synthetic-data platform with verifiable provenance and real-time AI training delivery",
+  "description": "Synthik is a decentralized platform built on Filecoin’s Synapse SDK that streamlines the creation, sharing, and monetization of high-fidelity synthetic datasets. Every dataset’s lineage is immutably recorded on-chain using Proof-of-Data-Possession, an AI-driven quality gate ensures accuracy and diversity, and data is stored on Filecoin with FilCDN acceleration. USDFc stablecoin enables instant, low-fee license settlement, while one-click pipelines feed verified data directly into AWS SageMaker, Google Vertex AI, or Hugging Face for seamless model training.",
+  "team": [
+    {
+      "name": "Ademola Adebowale",
+      "email": "ademolajohn844@gmail.com"
+    },
+    {
+      "name": "Popoola Damilola",
+      "email": "walkingtemplar@gmail.com"
+    },
+    {
+      "name": "Akanji Emmanuel",
+      "email": "omoebun52@gmail.com"
+    },
+  ],
+  "demo_url": "https://synthik.io",
+  "video_url": "https://youtu.be/xZQLcEWz8s4?si=wACVphDTG6Q0SPFJ",
+  "technologies": [
+    "Filecoin Synapse SDK",
+    "FilCDN",
+    "USDFc",
+    "Proof-of-Data-Possession",
+    "React",
+    "Next.js",
+    "TypeScript",
+    "Tailwind CSS",
+    "FastAPI",
+    "SQLAlchemy",
+    "Redis",
+    "Celery",
+    "LangChain",
+    "AWS SageMaker",
+    "Google Vertex AI",
+    "Hugging Face",
+    "OpenAI GPT-4",
+    "Google Gemini",
+    "Anthropic Claude"
+  ]
+}
