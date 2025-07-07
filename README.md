@@ -15,6 +15,7 @@ Built on Filecoin's infrastructure, Synthik enables AI researchers, data scienti
 - [🎯 Problem Statement](#-problem-statement)
 - [🚀 Our Solution](#-our-solution)
 - [🔗 Filecoin Integration](#-filecoin-integration)
+- [🔗 Blockchain Provenance Architecture](#-blockchain-provenance-architecture)
 - [🛠️ SDKs & Integration](#️-sdks--integration)
   - [JavaScript/TypeScript SDK](#javascripttypescript-sdk)
   - [Python SDK (Coming Soon)](#python-sdk-coming-soon)
@@ -87,6 +88,146 @@ All accompanying training scripts, configuration files and runtime metadata are 
 | ------------ | ------------------------------------------------------------------------------------------------------------------ |
 | FIL Faucet   | [faucet.calibration.fildev.network](https://faucet.calibration.fildev.network/)                                    |
 | USDFC Faucet | [forest-explorer.chainsafe.dev/faucet/calibnet_usdfc](https://forest-explorer.chainsafe.dev/faucet/calibnet_usdfc) |
+
+## 🔗 Blockchain Provenance Architecture
+
+### **FVM Smart Contracts + Filecoin CID Lineage**
+
+Synthik's provenance system combines **custom FVM smart contracts** with **Filecoin's content-addressed storage** to create an immutable, verifiable audit trail from dataset generation to model deployment.
+
+#### **How It Works: CID-Based Provenance Chain**
+
+```mermaid
+graph TD
+    A[Dataset Generation] --> B[Synapse SDK Upload]
+    B --> C[Filecoin Storage + CID]
+    C --> D[ProvenanceManager Contract]
+    D --> E[On-Chain Metadata Record]
+
+    F[Model Training] --> G[Training Config + Results]
+    G --> H[Filecoin Storage + CID]
+    H --> I[Training Event Record]
+    I --> D
+
+    J[Dataset Usage] --> K[Usage Metadata]
+    K --> L[Filecoin Storage + CID]
+    L --> M[Usage Event Record]
+    M --> D
+
+    D --> N[Complete Audit Trail]
+    N --> O[Regulatory Compliance]
+```
+
+#### **Data Flow Architecture**
+
+| Step                        | Action                  | Filecoin CID                                                    | Smart Contract Record                      |
+| --------------------------- | ----------------------- | --------------------------------------------------------------- | ------------------------------------------ |
+| **1. Dataset Creation**     | Generate synthetic data | `dataCid` (encrypted dataset)<br>`metadataCid` (schema, config) | `ProvenanceManager.createDataset()`        |
+| **2. Quality Verification** | LLM agent validation    | `validationReportCid`                                           | `ProvenanceManager.submitQualityMetrics()` |
+| **3. Model Training**       | Train on dataset        | `trainingConfigCid`<br>`metricsCid`<br>`resultCid`              | `ProvenanceManager.recordModelTraining()`  |
+| **4. Dataset Usage**        | Production deployment   | `resultsCid`                                                    | `ProvenanceManager.recordDatasetUsage()`   |
+| **5. Access Control**       | Permission management   | N/A                                                             | `DatasetRegistry.grantAccess()`            |
+
+#### **Smart Contract Responsibilities**
+
+**ProvenanceManager** - Core lineage tracking
+
+```solidity
+struct Dataset {
+    string dataCid;           // Filecoin CID of encrypted dataset
+    string metadataCid;       // Schema, generation config, lineage
+    address creator;          // Dataset creator address
+    bytes32 merkleRoot;       // Data integrity verification
+    GenerationType type;      // SCRATCH, AUGMENTED, TRANSFORM, etc.
+    QualityLevel quality;     // UNVERIFIED → PREMIUM
+}
+
+// Links parent datasets for transformation lineage
+function linkDatasetLineage(string childId, string[] parentIds)
+
+// Cryptographic verification of individual data rows
+function verifyDataRow(string datasetId, bytes32 leaf, bytes32[] proof)
+```
+
+**DatasetRegistry** - Access control & relationships
+
+```solidity
+// Time-based access control
+mapping(string => mapping(address => uint256)) accessExpiry;
+
+// Dataset relationships (derived, augments, validates, etc.)
+struct DatasetRelationship {
+    RelationType relationType;  // DERIVED_FROM, AUGMENTS, VALIDATES
+    string metadata;           // Stored as Filecoin CID
+}
+```
+
+**DatasetMarketplace** - Economic transactions
+
+```solidity
+// USDFC-powered purchases with automatic royalty distribution
+function purchaseDataset(string datasetId, string purpose)
+
+// Links purchase to usage tracking
+emit DatasetPurchased(datasetId, buyer, price, licenseType);
+```
+
+#### **CID-Based Lineage Examples**
+
+**1. Data Transformation Chain**
+
+```
+Original Dataset (CID: bafybeiabc123...)
+    ↓ [Anonymization Transform]
+Anonymized Dataset (CID: bafybeidef456...)
+    ↓ [Augmentation Process]
+Augmented Dataset (CID: bafybeighi789...)
+```
+
+**2. Model Training Provenance**
+
+```
+Dataset CID: bafybeiabc123...
+    ↓ [Training Config CID: bafybeiconfig...]
+Model Weights CID: bafybeimodel...
+    ↓ [Evaluation Metrics CID: bafybeimetrics...]
+Production Model CID: bafybeiprod...
+```
+
+#### **Regulatory Compliance Features**
+
+- **Immutable Audit Trail**: Every CID and transaction is permanently recorded on FVM
+- **Cryptographic Verification**: Merkle proofs ensure data hasn't been tampered with
+- **Access Logging**: Every dataset access is timestamped and recorded
+- **Lineage Tracking**: Complete parent-child relationships for transformed datasets
+- **Quality Attestation**: Verifier signatures on quality metrics
+
+#### **Integration with Existing Workflows**
+
+```typescript
+// SDK automatically handles CID generation and contract interaction
+const synthik = new Synthik({ network: 'calibration' });
+
+// Generate dataset - creates CIDs and records provenance
+const dataset = await synthik.generateDataset({
+  name: "Medical Records",
+  schema: [...],
+  parentDatasets: ["dataset-id-1", "dataset-id-2"], // Automatic lineage
+});
+
+// Training automatically records provenance
+const model = await dataset.train({
+  model: "bert-base",
+  platform: "vertex-ai",
+  trackLineage: true  // Records training CIDs + metrics
+});
+
+// Audit trail query
+const provenance = await synthik.getProvenance(dataset.id);
+// Returns: creation → transformations → training → usage
+```
+
+This architecture ensures that every piece of synthetic data can be traced from its initial generation through all transformations, training runs, and production usage—providing the transparency and auditability required for trustworthy AI systems.
 
 ## 🛠️ SDKs & Integration
 
@@ -183,7 +324,6 @@ trainer = dataset.get_trainer(
 3. **Install Dependencies**: `npm install` (frontend) and `poetry install` (backend)
 4. **Configure Environment**: Set up `.env` files with your credentials
 5. **Start Development**: `npm run dev` (frontend) and `make run` (backend)
-
 
 ## 🤝 Contributing
 
