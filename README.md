@@ -10,6 +10,28 @@ Synthik is a decentralized platform that revolutionizes how synthetic datasets a
 
 Built on Filecoin's infrastructure, Synthik enables AI researchers, data scientists, and enterprises to generate high-quality synthetic data and finetune models with full transparency and trust.
 
+## 📋 Table of Contents
+
+- [🎯 Problem Statement](#-problem-statement)
+  - [Black-Box AI & Lack of Transparency](#black-box-ai--lack-of-transparency)
+  - [Broken Data Lineage](#broken-data-lineage)
+  - [Compliance & Privacy Minefield](#compliance--privacy-minefield)
+  - [Trust & Quality Deficit](#trust--quality-deficit)
+  - [Misaligned Economics](#misaligned-economics)
+- [🚀 Our Solution](#-our-solution)
+- [🔗 Filecoin Integration](#-filecoin-integration)
+  - [Testnet Resources](#testnet-resources)
+- [🛠️ SDKs & Integration](#️-sdks--integration)
+  - [JavaScript/TypeScript SDK](#javascripttypescript-sdk)
+  - [Python SDK (Coming Soon)](#python-sdk-coming-soon)
+- [🏃‍♂️ Getting Started](#️-getting-started)
+  - [Prerequisites](#prerequisites)
+  - [Quick Start](#quick-start)
+  - [Example Usage](#example-usage)
+- [🤝 Contributing](#-contributing)
+- [📄 License](#-license)
+- [🔗 Links](#-links)
+
 ## 🎯 Problem Statement
 
 Today's AI revolution runs on invisible data and opaque models:
@@ -80,7 +102,6 @@ All accompanying training scripts, configuration files and runtime metadata are 
 ### **JavaScript/TypeScript SDK**
 
 [![npm version](https://img.shields.io/npm/v/@ghostxd/synthik-sdk.svg)](https://www.npmjs.com/package/@ghostxd/synthik-sdk)
-[![npm downloads](https://img.shields.io/npm/dm/@ghostxd/synthik-sdk.svg)](https://www.npmjs.com/package/@ghostxd/synthik-sdk)
 
 Install the SDK to integrate Synthik into your existing workflows:
 
