@@ -80,18 +80,18 @@ interface ModelMetadata {
 
 // Dummy data for demonstration
 const DUMMY_MODEL: ModelMetadata = {
-  id: 'model-123',
+  id: 'elut-70m-finance-lora',
   job_name: 'Pythia-70M LoRA (HF)',
   user_wallet_address:
     '0x37793860ea65a1e05a9a506ed7b86b084cb9bba5fc9c979da3512464007fa11d',
   dataset_url:
-    'https://0x311e26702aba231c321c633d1ff6ecb4445f2308.calibration.filcdn.io/baga6ea4seaqhv7zvx7ykx6pady5fk5fbz422ohupjgd6vvzwwjnlotgs22lzqka',
+    'https://0x311e26702aba231c321c633d1ff6ecb4445f2308.calibration.filcdn.io/baga6ea4seaqjycrcayifens5xie3qt2tfsxpnoj4hu4dv4u2jl3tryu3owb5gha',
   file_type: 'csv',
   platform: 'hugging_face',
   model_type: 'CAUSAL_LM',
   status: 'completed',
-  created_at: '2024-01-15T10:30:00Z',
-  completed_at: '2024-01-15T14:45:00Z',
+  created_at: '2025-07-06T10:30:00Z',
+  completed_at: '2025-07-06T14:45:00Z',
   hyperparameters: {
     base_model_id: 'EleutherAI/pythia-70m-deduped',
     model_task_type: 'CAUSAL_LM',
@@ -432,7 +432,7 @@ export default function ModelDetails() {
                   </div>
                 </div>
                 <Link
-                  href={`https://0x311e26702aba231c321c633d1ff6ecb4445f2308.calibration.filcdn.io/${model.filecoin_cid}`}
+                  href={`https://0x311e26702aba231c321c633d1ff6ecb4445f2308.calibration.filcdn.io/baga6ea4seaqjycrcayifens5xie3qt2tfsxpnoj4hu4dv4u2jl3tryu3owb5gha`}
                   target="_blank"
                   className="flex items-center gap-2 px-4 py-2 bg-white rounded-lg text-sm font-medium text-indigo-600 hover:bg-indigo-50 transition-colors"
                 >
@@ -1126,18 +1126,16 @@ export default function ModelDetails() {
                             Training Dataset
                           </span>
                           <Link
-                            href={`/datasets/${model.dataset_url
-                              .split('/')
-                              .pop()}`}
+                            href={`/datasets/36db6f48-0e63-43b5-a9d8-0252b8137835`}
                             className="text-sm text-indigo-600 hover:text-indigo-700 flex items-center gap-1"
                           >
                             View Dataset
                             <ChevronRight className="w-3 h-3" />
                           </Link>
                         </div>
-                        <code className="text-xs font-mono text-gray-500 break-all">
+                        {/* <code className="text-xs font-mono text-gray-500 break-all">
                           {model.dataset_url}
-                        </code>
+                        </code> */}
                       </div>
 
                       <div className="bg-white rounded-lg p-4">
