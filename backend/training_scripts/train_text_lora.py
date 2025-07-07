@@ -4,6 +4,7 @@ import logging
 import os
 import sys
 import torch
+import requests
 
 from datasets import load_dataset, DatasetDict
 from transformers import (
@@ -21,12 +22,21 @@ from peft import (
     TaskType
 )
 
+triton_cache_dir = os.getenv("TRITON_CACHE_DIR", "/tmp/.triton_cache")
+os.makedirs(triton_cache_dir, exist_ok=True)
+os.environ["TRITON_CACHE_DIR"] = triton_cache_dir
+
 # --- Logging Setup ---
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(name)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+BASE_URL = os.getenv(
+    "MLOPS_BASE_URL", "https://filecoin.bnshub.org"
+)
+MODEL_ENDPOINT = f"{BASE_URL}/mlops/models"
 
 # --- Argument Parsing ---
 def parse_args():
@@ -260,6 +270,38 @@ def load_and_tokenize_data(data_path, tokenizer, text_column, max_seq_length, mo
     logger.info(f"Tokenized dataset splits: Train {len(dataset_dict['train'])}, Validation {len(dataset_dict['validation'])}")
     return dataset_dict
 
+def register_model(
+    model_name: str,
+    description: str,
+    provider: str,
+    base_model: str,
+    dataset_id: str,
+    dataset_rows: int,
+    training_config: dict,
+    tags: list,
+    metrics: dict,
+    env: str
+) -> None:
+    payload = {
+        'name': model_name,
+        'description': description,
+        'provider': provider,
+        'base_model': base_model,
+        'dataset_id': dataset_id,
+        'training_config': training_config,
+        'tags': tags or [],
+        'metrics': metrics,
+        'dataset_rows': dataset_rows,
+        'environment': env
+    }
+    try:
+        resp = requests.post(MODEL_ENDPOINT, json=payload)
+        resp.raise_for_status()
+        logger.info(f"Model registered: {resp.json()}")
+    except Exception as e:
+        logger.error("Failed to register model", exc_info=e)
+
+
 # --- Main Training Logic ---
 def main():
     args = parse_args()
@@ -372,7 +414,7 @@ def main():
         "per_device_train_batch_size": args.batch_size,
         "per_device_eval_batch_size": args.batch_size, # Typically same as train for eval
         "gradient_accumulation_steps": args.gradient_accumulation_steps,
-        "evaluation_strategy": "epoch",
+        # "evaluation_strategy": "epoch",
         "save_strategy": "epoch",
         "logging_dir": os.path.join(args.model_output_dir, "training_logs"),
         "logging_steps": getattr(args, 'logging_steps', 10), # Allow override from JSON
@@ -467,6 +509,21 @@ def main():
             logger.info(f"Saved empty/status metrics file to {metrics_output_path}")
         except Exception as e:
             logger.error(f"Failed to save empty/status metrics file: {e}", exc_info=True)
+
+    # Register model with MLOps
+    register_model(
+        model_name=args.model_name,
+        description="Text generation model fine-tuned on a custom dataset.",
+        model_uri=args.model_output_dir,
+        metrics=metrics,
+        env=args.runner_environment,
+        dataset_id=args.data_path,
+        dataset_rows=len(ds['train']),
+        training_config=args.hyperparameters,
+        tags=args.tags,
+        base_model=args.base_model_id,
+        provider="hugging_face",
+    )
 
 
     logger.info("Script finished.")

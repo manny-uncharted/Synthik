@@ -55,6 +55,7 @@ Today's AI revolution runs on invisible data and opaque models:
 
 ## 🚀 Our Solution
 
+
 ### **LLM-Powered Synthetic Data Generation**:
 - Feed Synthik a schema and field-level constraints to generate, augment or anonymize datasets. 
 
@@ -217,10 +218,42 @@ Production Model CID: bafybeiprod...
 - **Quality Attestation**: Verifier signatures on quality metrics
 
 This architecture ensures that every piece of synthetic data can be traced from its initial generation through all transformations, training runs, and production usage—providing the transparency and auditability required for trustworthy AI systems.
+=======
+**One-Click Training Pipelines** - When you initiate model training, FilCDN streams the encrypted dataset (with validated on-chain licenses), decrypts at the edge, and pipes it directly into Hugging Face, Google Vertex AI or AWS SageMaker for fine-tuning—no manual ETL required.
+
+All accompanying training scripts, configuration files and runtime metadata are likewise logged and stored on Filecoin via the Synapse SDK for full reproducibility and auditability.
+
+## 🔗 Filecoin Integration
+
+| Component                 | Description                                                                        | Key Features                                                                                                                                                                                                                                                                                    |
+| ------------------------- | ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Synapse SDK**           | Uploads encrypted datasets & training metadata to Filecoin with proof verification | • Automated proof set management<br>• Smart provider selection<br>• USDFC payment abstraction<br>• CDN integration support                                                                                                                                                                      |
+| **FilCDN**                | Streams datasets for model training & instant preview delivery                     | • Direct HTTPS access (no wallet needed)<br>• Global edge caching<br>• URL pattern: `https://{address}.calibration.filcdn.io/{cid}`                                                                                                                                                             |
+| **Smart Contracts (FVM)** | Records immutable dataset lineage & handles marketplace transactions               | • **ProvenanceManager**: `0x29D8445d30d1a3d48dAcAdAf84b4F71FEd7E0930`<br>• **DatasetRegistry**: `0xCf296AbB8055263E56d9eD507bB221C5F4899646`<br>• **DatasetMarketplace**: `0xC06182A35AECb648Bc30514905aD8A156Bf7dffc`<br>• **AutoAccessManager**: `0x1EE7E24CD49E2347f73880a259f28950d0B6fB85` |
+| **USDFC Token**           | Powers all dataset purchases & storage payments on Synthik                         | • Address: `0xb3042734b608a1B16e9e86B374A3f3e389B4cDf0`<br>• Decimals: 18<br>• Used for: Dataset purchases, storage fees, royalties                                                                                                                                                             |
+
+### Testnet Resources
+
+| Resource     | Link                                                                                                               |
+| ------------ | ------------------------------------------------------------------------------------------------------------------ |
+| FIL Faucet   | [faucet.calibration.fildev.network](https://faucet.calibration.fildev.network/)                                    |
+| USDFC Faucet | [forest-explorer.chainsafe.dev/faucet/calibnet_usdfc](https://forest-explorer.chainsafe.dev/faucet/calibnet_usdfc) |
 
 ## 🛠️ SDKs & Integration
 
 ### **JavaScript/TypeScript SDK**
+
+[![npm version](https://img.shields.io/npm/v/@ghostxd/synthik-sdk.svg)](https://www.npmjs.com/package/@ghostxd/synthik-sdk)
+
+We also built an SDK to help integrate Synthik's synthetic data and provenance into your existing workflows:
+
+[Npm Package](https://www.npmjs.com/package/@ghostxd/synthik-sdk)
+
+```bash
+npm install @ghostxd/synthik-sdk
+# or
+yarn add @ghostxd/synthik-sdk
+```
 
 [![npm version](https://img.shields.io/npm/v/@ghostxd/synthik-sdk.svg)](https://www.npmjs.com/package/@ghostxd/synthik-sdk)
 
@@ -314,6 +347,7 @@ trainer = dataset.get_trainer(
 3. **Install Dependencies**: `npm install` (frontend) and `poetry install` (backend)
 4. **Configure Environment**: Set up `.env` files with your credentials
 5. **Start Development**: `npm run dev` (frontend) and `make run` (backend)
+
 
 ## 🤝 Contributing
 
