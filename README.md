@@ -75,13 +75,23 @@ All accompanying training scripts, configuration files and runtime metadata are 
 | FIL Faucet   | [faucet.calibration.fildev.network](https://faucet.calibration.fildev.network/)                                    |
 | USDFC Faucet | [forest-explorer.chainsafe.dev/faucet/calibnet_usdfc](https://forest-explorer.chainsafe.dev/faucet/calibnet_usdfc) |
 
-
 ## 🛠️ SDKs & Integration
 
 ### **JavaScript/TypeScript SDK**
 
+[![npm version](https://img.shields.io/npm/v/@ghostxd/synthik-sdk.svg)](https://www.npmjs.com/package/@ghostxd/synthik-sdk)
+[![npm downloads](https://img.shields.io/npm/dm/@ghostxd/synthik-sdk.svg)](https://www.npmjs.com/package/@ghostxd/synthik-sdk)
+
+Install the SDK to integrate Synthik into your existing workflows:
+
+```bash
+npm install @ghostxd/synthik-sdk
+# or
+yarn add @ghostxd/synthik-sdk
+```
+
 ```typescript
-import { Synthik } from '@synthik/sdk';
+import { Synthik } from '@ghostxd/synthik-sdk';
 
 const synthik = new Synthik({
   privateKey: 'YOUR_PRIVATE_KEY',
@@ -105,9 +115,15 @@ const dataset = await synthik.generateDataset(
   },
   models[0]
 );
+
+// Dataset is automatically uploaded to Filecoin and our FVM contracts for provenance
+console.log('Dataset CID:', dataset.cid);
+console.log('Access via FilCDN:', dataset.cdnUrl);
 ```
 
 ### **Python SDK** (Coming Soon)
+
+We're actively developing a Python SDK to bring the same seamless integration to Python workflows:
 
 ```python
 from synthik import SynthikClient
@@ -154,7 +170,6 @@ curl -X POST "http://localhost:8000/generation/generate" \
     ]
   }'
 ```
-
 
 ## 🤝 Contributing
 
