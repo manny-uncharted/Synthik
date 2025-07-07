@@ -65,8 +65,8 @@ Today's AI revolution runs on invisible data and opaque models:
 
 ### **Privacy-First Storage & Instant Delivery**:
 
-- Encrypted Uploads & Provenance: **Synapse SDK** + **FilCDN** uploads full datasets, previews and metadata to Filecoin with verifiable Proof of Data Possession.
-- Lineage & Preview Fetch: **FilCDN** delivers schema, lineage and preview data to UIs and validation agents before any download.
+- **Encrypted Uploads & Provenance**: **Synapse SDK** + **FilCDN** uploads full datasets, previews and metadata to Filecoin with verifiable Proof of Data Possession.
+- **Lineage & Preview Fetch**: **FilCDN** delivers schema, lineage and preview data to UIs and validation agents before any download.
 - Merkle proofs plus time-boxed, key-gated access keep raw content secure and compliant.
 
 ### **Immutable Lineage** 
@@ -77,13 +77,13 @@ Today's AI revolution runs on invisible data and opaque models:
 
 ### **One-Click Training Pipelines**
 
-- When you initiate model training, FilCDN streams the encrypted dataset (with validated on-chain licenses), decrypts at the edge, and pipes it directly into Hugging Face, Google Vertex AI or AWS SageMaker for fine-tuning—no manual ETL required.
+- When you initiate model training, **FilCDN** streams the encrypted dataset (with validated on-chain licenses), decrypts at the edge, and pipes it directly into Hugging Face, Google Vertex AI or AWS SageMaker for fine-tuning—no manual ETL required.
 
 - All accompanying training scripts, configuration files and runtime metadata are likewise logged and stored on Filecoin via the Synapse SDK for full reproducibility and auditability.
 
-### **Streamlined UX for Non-Crypto Users with Privy**
+### **Streamlined UX for Non-Crypto Users with [Privy](https://www.privy.io/)**
 
--  While powered by Filecoin, our interface feels familiar to traditional SaaS users. Sign in with Google, Twitter, GitHub, or email—no wallet setup required. The platform abstracts away crypto complexity while maintaining full decentralization benefits under the hood.
+-  While powered by **Filecoin**, our interface feels familiar to traditional SaaS users. Sign in with Google, Twitter, Passkeys, or email—no wallet setup required. The platform abstracts away crypto complexity while maintaining full decentralization benefits under the hood.
 
 
 
