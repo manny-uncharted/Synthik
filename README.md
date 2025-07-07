@@ -202,31 +202,6 @@ Production Model CID: bafybeiprod...
 - **Lineage Tracking**: Complete parent-child relationships for transformed datasets
 - **Quality Attestation**: Verifier signatures on quality metrics
 
-#### **Integration with Existing Workflows**
-
-```typescript
-// SDK automatically handles CID generation and contract interaction
-const synthik = new Synthik({ network: 'calibration' });
-
-// Generate dataset - creates CIDs and records provenance
-const dataset = await synthik.generateDataset({
-  name: "Medical Records",
-  schema: [...],
-  parentDatasets: ["dataset-id-1", "dataset-id-2"], // Automatic lineage
-});
-
-// Training automatically records provenance
-const model = await dataset.train({
-  model: "bert-base",
-  platform: "vertex-ai",
-  trackLineage: true  // Records training CIDs + metrics
-});
-
-// Audit trail query
-const provenance = await synthik.getProvenance(dataset.id);
-// Returns: creation → transformations → training → usage
-```
-
 This architecture ensures that every piece of synthetic data can be traced from its initial generation through all transformations, training runs, and production usage—providing the transparency and auditability required for trustworthy AI systems.
 
 ## 🛠️ SDKs & Integration
