@@ -177,8 +177,10 @@ trainer = dataset.get_trainer(
                 Start Building <ArrowUpRight className="w-4 h-4" />
               </Link>
               <Link
-                href="/docs"
+                href="https://github.com/Ghost-xDD/Synthik"
                 className="px-8 py-4 glass-card rounded-lg font-medium hover:bg-gray-50 transition-colors"
+                target="_blank"
+                rel="noopener noreferrer"
               >
                 View Documentation
               </Link>
@@ -562,10 +564,10 @@ trainer = dataset.get_trainer(
             className="text-center mb-16"
           >
             <h2 className="text-4xl lg:text-5xl font-light display-font mb-4">
-              Trusted by innovators across industries
+              Applicable to innovators across industries
             </h2>
             <p className="text-xl text-gray-600">
-              See how teams are building the future with synthetic data
+              See how teams can build the future with synthetic data
             </p>
           </motion.div>
 
@@ -763,7 +765,7 @@ trainer = dataset.get_trainer(
       </section>
 
       {/* Stats Section */}
-      <section className="px-8 lg:px-16 py-24">
+      {/* <section className="px-8 lg:px-16 py-24">
         <div className="max-w-7xl mx-auto">
           <div className="bg-gradient-to-br from-indigo-600 to-purple-700 rounded-3xl p-12 lg:p-16 text-white relative overflow-hidden">
             <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
@@ -800,7 +802,7 @@ trainer = dataset.get_trainer(
             </div>
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* CTA Section */}
       <section className="px-8 lg:px-16 py-24">
@@ -822,17 +824,20 @@ trainer = dataset.get_trainer(
               blockchain-verified synthetic data.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button className="px-8 py-4 btn-primary rounded-lg font-medium flex items-center justify-center gap-2">
+              <Link
+                href="/datasets"
+                className="px-8 py-4 btn-primary rounded-lg font-medium flex items-center justify-center gap-2"
+              >
                 Get Started Free <ArrowUpRight className="w-4 h-4" />
-              </button>
-              <button className="px-8 py-4 border border-gray-200 rounded-lg font-medium hover:bg-gray-50 transition-colors">
+              </Link>
+              {/* <button className="px-8 py-4 border border-gray-200 rounded-lg font-medium hover:bg-gray-50 transition-colors">
                 Schedule Demo
-              </button>
+              </button> */}
             </div>
-            <p className="text-sm text-gray-500 mt-6">
+            {/* <p className="text-sm text-gray-500 mt-6">
               No credit card required • 10,000 free API calls • Full lineage
               tracking included
-            </p>
+            </p> */}
           </div>
         </motion.div>
       </section>
@@ -851,125 +856,11 @@ trainer = dataset.get_trainer(
                 AI
               </p>
             </div>
-
-            <div>
-              <h4 className="font-medium mb-4">Product</h4>
-              <ul className="space-y-2 text-sm text-gray-600">
-                <li>
-                  <a
-                    href="#"
-                    className="hover:text-foreground transition-colors"
-                  >
-                    Features
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="hover:text-foreground transition-colors"
-                  >
-                    Integrations
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="hover:text-foreground transition-colors"
-                  >
-                    Pricing
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="hover:text-foreground transition-colors"
-                  >
-                    Changelog
-                  </a>
-                </li>
-              </ul>
-            </div>
-
-            <div>
-              <h4 className="font-medium mb-4">Resources</h4>
-              <ul className="space-y-2 text-sm text-gray-600">
-                <li>
-                  <a
-                    href="#"
-                    className="hover:text-foreground transition-colors"
-                  >
-                    Documentation
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="hover:text-foreground transition-colors"
-                  >
-                    API Reference
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="hover:text-foreground transition-colors"
-                  >
-                    Blog
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="hover:text-foreground transition-colors"
-                  >
-                    Community
-                  </a>
-                </li>
-              </ul>
-            </div>
-
-            <div>
-              <h4 className="font-medium mb-4">Company</h4>
-              <ul className="space-y-2 text-sm text-gray-600">
-                <li>
-                  <a
-                    href="#"
-                    className="hover:text-foreground transition-colors"
-                  >
-                    About
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="hover:text-foreground transition-colors"
-                  >
-                    Careers
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="hover:text-foreground transition-colors"
-                  >
-                    Contact
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="hover:text-foreground transition-colors"
-                  >
-                    Partners
-                  </a>
-                </li>
-              </ul>
-            </div>
           </div>
 
           <div className="pt-8 border-t border-gray-100 flex flex-col md:flex-row justify-between items-center gap-4">
             <div className="text-sm text-gray-500">
-              © 2024 Synthik. All rights reserved.
+              © 2025 Synthik. All rights reserved.
             </div>
             <div className="flex gap-6 text-sm text-gray-600">
               <a href="#" className="hover:text-foreground transition-colors">
