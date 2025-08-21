@@ -58,7 +58,7 @@ export default async function handler(
     }
 
     // Validate role
-    const validRoles = ['ml_engineer', 'data_scientist', 'data_engineer', 'product_manager', 'founder', 'other'];
+    const validRoles = ['ml_engineer', 'data_scientist', 'data_engineer', 'product_manager', 'founder', 'other', 'student', 'ai_scientist', 'ai_engineer', 'ai_researcher', 'vp_engineering', 'ceo'];
     if (!validRoles.includes(role)) {
       return res.status(400).json({
         success: false,
