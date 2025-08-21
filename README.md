@@ -112,13 +112,6 @@ Today's AI revolution runs on invisible data and opaque models:
 | **Smart Contracts (FVM)** | Records immutable dataset lineage & handles marketplace transactions               | • **ProvenanceManager**: `0x29D8445d30d1a3d48dAcAdAf84b4F71FEd7E0930`<br>• **DatasetRegistry**: `0xCf296AbB8055263E56d9eD507bB221C5F4899646`<br>• **DatasetMarketplace**: `0xC06182A35AECb648Bc30514905aD8A156Bf7dffc`<br>• **AutoAccessManager**: `0x1EE7E24CD49E2347f73880a259f28950d0B6fB85` |
 | **USDFC Token**           | Powers all dataset purchases & storage payments on Synthik                         | • Address: `0xb3042734b608a1B16e9e86B374A3f3e389B4cDf0`<br>• Decimals: 18<br>• Used for: Dataset purchases, storage fees, royalties                                                                                                                                                             |
 
-### Testnet Resources
-
-| Resource     | Link                                                                                                               |
-| ------------ | ------------------------------------------------------------------------------------------------------------------ |
-| FIL Faucet   | [faucet.calibration.fildev.network](https://faucet.calibration.fildev.network/)                                    |
-| USDFC Faucet | [forest-explorer.chainsafe.dev/faucet/calibnet_usdfc](https://forest-explorer.chainsafe.dev/faucet/calibnet_usdfc) |
-
 ## 🔗 Blockchain Provenance Architecture
 
 ### **FVM Smart Contracts + Filecoin CID Lineage**
@@ -232,9 +225,6 @@ Production Model CID: bafybeiprod...
 - **Lineage Tracking**: Complete parent-child relationships for transformed datasets
 - **Quality Attestation**: Verifier signatures on quality metrics
 
-#### _This architecture ensures that every piece of synthetic data can be traced from its initial generation through all transformations, training runs, and production usage_.
-
-=======
 
 ## 🔗 Filecoin Integration
 
@@ -244,13 +234,6 @@ Production Model CID: bafybeiprod...
 | **FilCDN**                | Streams datasets for model training & instant preview delivery                     | • Direct HTTPS access (no wallet needed)<br>• Global edge caching<br>• URL pattern: `https://{address}.calibration.filcdn.io/{cid}`                                                                                                                                                             |
 | **Smart Contracts (FVM)** | Records immutable dataset lineage & handles marketplace transactions               | • **ProvenanceManager**: `0x29D8445d30d1a3d48dAcAdAf84b4F71FEd7E0930`<br>• **DatasetRegistry**: `0xCf296AbB8055263E56d9eD507bB221C5F4899646`<br>• **DatasetMarketplace**: `0xC06182A35AECb648Bc30514905aD8A156Bf7dffc`<br>• **AutoAccessManager**: `0x1EE7E24CD49E2347f73880a259f28950d0B6fB85` |
 | **USDFC Token**           | Powers all dataset purchases & storage payments on Synthik                         | • Address: `0xb3042734b608a1B16e9e86B374A3f3e389B4cDf0`<br>• Decimals: 18<br>• Used for: Dataset purchases, storage fees, royalties                                                                                                                                                             |
-
-### Testnet Resources
-
-| Resource     | Link                                                                                                               |
-| ------------ | ------------------------------------------------------------------------------------------------------------------ |
-| FIL Faucet   | [faucet.calibration.fildev.network](https://faucet.calibration.fildev.network/)                                    |
-| USDFC Faucet | [forest-explorer.chainsafe.dev/faucet/calibnet_usdfc](https://forest-explorer.chainsafe.dev/faucet/calibnet_usdfc) |
 
 ## 🛠️ SDKs & Integration
 
