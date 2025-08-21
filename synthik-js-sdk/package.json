@@ -1,6 +1,6 @@
 {
   "name": "@ghostxd/synthik-sdk",
-  "version": "1.0.1",
+  "version": "1.0.0",
   "description": "Official JavaScript SDK for Synthik - Synthetic Data Platform on Filecoin",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -12,11 +12,11 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/Ghost-xDD/Synthik.git"
+    "url": "https://github.com/synthik-io/synthik-js-sdk.git"
   },
-  "homepage": "https://github.com/Ghost-xDD/Synthik#readme",
+  "homepage": "https://github.com/synthik-io/synthik-js-sdk#readme",
   "bugs": {
-    "url": "https://github.com/Ghost-xDD/Synthik/issues"
+    "url": "https://github.com/synthik-io/synthik-js-sdk/issues"
   },
   "scripts": {
     "build": "tsc",
