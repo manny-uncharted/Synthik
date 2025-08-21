@@ -2,14 +2,17 @@ import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 
 export default function Waitlist() {
-  const [name, setName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [role, setRole] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const [nameError, setNameError] = useState('');
+  const [firstNameError, setFirstNameError] = useState('');
+  const [lastNameError, setLastNameError] = useState('');
   const [emailError, setEmailError] = useState('');
   const [roleError, setRoleError] = useState('');
+  const [apiError, setApiError] = useState('');
   const [currentDataset, setCurrentDataset] = useState(0);
 
   // Real synthetic data examples
@@ -71,13 +74,21 @@ export default function Waitlist() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setNameError('');
+    setFirstNameError('');
+    setLastNameError('');
     setEmailError('');
     setRoleError('');
+    setApiError('');
 
-    const trimmedName = name.trim();
-    if (!trimmedName) {
-      setNameError('Please enter your name.');
+    const trimmedFirstName = firstName.trim();
+    const trimmedLastName = lastName.trim();
+    
+    if (!trimmedFirstName) {
+      setFirstNameError('Please enter your first name.');
+      return;
+    }
+    if (!trimmedLastName) {
+      setLastNameError('Please enter your last name.');
       return;
     }
     const isValidEmail = /[^\s@]+@[^\s@]+\.[^\s@]+/.test(email);
@@ -89,13 +100,43 @@ export default function Waitlist() {
       setRoleError('Please select your role.');
       return;
     }
+    
     setIsSubmitting(true);
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    try {
+      const response = await fetch('/api/waitlist', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          first_name: trimmedFirstName,
+          last_name: trimmedLastName,
+          email: email.toLowerCase(),
+          role,
+        }),
+      });
 
-    setIsSubmitted(true);
-    setIsSubmitting(false);
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setIsSubmitted(true);
+      } else {
+        // Handle specific error cases
+        if (response.status === 409) {
+          setEmailError('This email is already on the waitlist.');
+        } else if (data.error) {
+          setApiError(data.error);
+        } else {
+          setApiError('Something went wrong. Please try again.');
+        }
+      }
+    } catch (error) {
+      console.error('Error submitting waitlist form:', error);
+      setApiError('Network error. Please check your connection and try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -173,28 +214,61 @@ export default function Waitlist() {
             <div className="max-w-lg mx-auto px-4">
               {!isSubmitted ? (
                 <form onSubmit={handleSubmit} className="space-y-4">
+                  {apiError && (
+                    <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
+                      <p className="text-sm text-red-600 font-medium">
+                        {apiError}
+                      </p>
+                    </div>
+                  )}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label htmlFor="name" className="sr-only">
-                        Name
+                      <label htmlFor="firstName" className="sr-only">
+                        First Name
                       </label>
                       <input
-                        id="name"
-                        name="name"
+                        id="firstName"
+                        name="firstName"
                         type="text"
-                        autoComplete="name"
+                        autoComplete="given-name"
                         required
-                        value={name}
+                        value={firstName}
                         onChange={(e) => {
-                          setName(e.target.value);
-                          if (nameError) setNameError('');
+                          setFirstName(e.target.value);
+                          if (firstNameError) setFirstNameError('');
+                          if (apiError) setApiError('');
                         }}
                         className="w-full px-5 py-3.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-gray-900 placeholder-gray-400 shadow-sm"
-                        placeholder="Your name"
+                        placeholder="First name"
                       />
-                      {nameError && (
+                      {firstNameError && (
                         <p className="mt-2 text-sm text-red-600 font-medium">
-                          {nameError}
+                          {firstNameError}
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <label htmlFor="lastName" className="sr-only">
+                        Last Name
+                      </label>
+                      <input
+                        id="lastName"
+                        name="lastName"
+                        type="text"
+                        autoComplete="family-name"
+                        required
+                        value={lastName}
+                        onChange={(e) => {
+                          setLastName(e.target.value);
+                          if (lastNameError) setLastNameError('');
+                          if (apiError) setApiError('');
+                        }}
+                        className="w-full px-5 py-3.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-gray-900 placeholder-gray-400 shadow-sm"
+                        placeholder="Last name"
+                      />
+                      {lastNameError && (
+                        <p className="mt-2 text-sm text-red-600 font-medium">
+                          {lastNameError}
                         </p>
                       )}
                     </div>
@@ -210,6 +284,7 @@ export default function Waitlist() {
                         onChange={(e) => {
                           setRole(e.target.value);
                           if (roleError) setRoleError('');
+                          if (apiError) setApiError('');
                         }}
                         className="w-full px-5 py-3.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-gray-900 shadow-sm appearance-none cursor-pointer"
                       >
@@ -229,30 +304,31 @@ export default function Waitlist() {
                         </p>
                       )}
                     </div>
-                  </div>
-                  <div>
-                    <label htmlFor="email" className="sr-only">
-                      Email
-                    </label>
-                    <input
-                      id="email"
-                      name="email"
-                      type="email"
-                      autoComplete="email"
-                      required
-                      value={email}
-                      onChange={(e) => {
-                        setEmail(e.target.value);
-                        if (emailError) setEmailError('');
-                      }}
-                      className="w-full px-5 py-3.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-gray-900 placeholder-gray-400 shadow-sm"
-                      placeholder="work@company.com"
-                    />
-                    {emailError && (
-                      <p className="mt-2 text-sm text-red-600 font-medium">
-                        {emailError}
-                      </p>
-                    )}
+                    <div>
+                      <label htmlFor="email" className="sr-only">
+                        Email
+                      </label>
+                      <input
+                        id="email"
+                        name="email"
+                        type="email"
+                        autoComplete="email"
+                        required
+                        value={email}
+                        onChange={(e) => {
+                          setEmail(e.target.value);
+                          if (emailError) setEmailError('');
+                          if (apiError) setApiError('');
+                        }}
+                        className="w-full px-5 py-3.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-gray-900 placeholder-gray-400 shadow-sm"
+                        placeholder="work@company.com"
+                      />
+                      {emailError && (
+                        <p className="mt-2 text-sm text-red-600 font-medium">
+                          {emailError}
+                        </p>
+                      )}
+                    </div>
                   </div>
                   <button
                     type="submit"
