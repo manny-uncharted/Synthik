@@ -553,6 +553,11 @@ export default function MarketplaceFinalizer({
     data,
     fullDataset,
     listingConfig,
+    finalizationState.datasetCreationTx,
+    generateDatasetId,
+    getGenerationType,
+    getModelId,
+    sendDatasetToBackend,
   ]);
 
   if (finalizationState.stage === 'idle') {

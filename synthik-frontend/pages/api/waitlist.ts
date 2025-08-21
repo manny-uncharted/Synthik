@@ -13,12 +13,12 @@ interface ApiResponse {
   success: boolean;
   message?: string;
   error?: string;
-  data?: any;
+  data?: WaitlistEntry | WaitlistEntry[] | Record<string, unknown>;
 }
 
 // Initialize database on first load (non-blocking)
 let dbInitialized = false;
-initializeDatabase().then(result => {
+initializeDatabase().then((result: boolean) => {
   dbInitialized = result;
   if (!result) {
     console.warn('Database initialization failed - waitlist API may not work');

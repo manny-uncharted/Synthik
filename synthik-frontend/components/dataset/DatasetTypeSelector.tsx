@@ -12,7 +12,7 @@ import {
   CheckCircle,
   AlertCircle,
 } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   DATASET_TYPES,
   dataAugmentationService,
@@ -108,20 +108,7 @@ export default function DatasetTypeSelector({
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
 
-  // Analyze uploaded file when it changes
-  useEffect(() => {
-    if (
-      uploadedFile &&
-      (selectedType === 'augmentation' || selectedType === 'transformation')
-    ) {
-      analyzeUploadedFile(uploadedFile);
-    } else {
-      setFileAnalysis(null);
-      setAnalysisError(null);
-    }
-  }, [uploadedFile, selectedType]);
-
-  const analyzeUploadedFile = async (file: File) => {
+  const analyzeUploadedFile = useCallback(async (file: File) => {
     setIsAnalyzing(true);
     setAnalysisError(null);
 
@@ -141,7 +128,20 @@ export default function DatasetTypeSelector({
     } finally {
       setIsAnalyzing(false);
     }
-  };
+  }, [onSchemaUpdate]);
+
+  // Analyze uploaded file when it changes
+  useEffect(() => {
+    if (
+      uploadedFile &&
+      (selectedType === 'augmentation' || selectedType === 'transformation')
+    ) {
+      analyzeUploadedFile(uploadedFile);
+    } else {
+      setFileAnalysis(null);
+      setAnalysisError(null);
+    }
+  }, [uploadedFile, selectedType, analyzeUploadedFile]);
 
   // Update schema when template is selected
   useEffect(() => {

@@ -190,7 +190,7 @@ export default function CreateDatasetFlow({
       }
     };
     analyzeFile();
-  }, [config.datasetType, config.uploadedFile]);
+  }, [config.datasetType, config.uploadedFile, config]);
 
   // Component for transformation/anonymization tabs
   const TransformationAnonymizationTabs = ({

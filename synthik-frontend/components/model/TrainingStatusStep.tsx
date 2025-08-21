@@ -414,7 +414,7 @@ export default function TrainingStatusStep({
     return () => {
       stopPolling();
     };
-  }, []);
+  }, [stopPolling]);
 
   const isTraining =
     trainingJob?.status === 'pending' || trainingJob?.status === 'running';

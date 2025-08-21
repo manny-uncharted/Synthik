@@ -1,6 +1,7 @@
 import { useRouter } from 'next/router';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import Image from 'next/image';
 import {
   ArrowLeft,
   Star,
@@ -337,9 +338,10 @@ export default function ModelDetails() {
                   rel="noopener noreferrer"
                   className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-medium hover:from-indigo-700 hover:to-purple-700 transition-all flex items-center gap-2 shadow-lg shadow-indigo-200"
                 >
-                  <img
+                  <Image
                     src="https://huggingface.co/front/assets/huggingface_logo-noborder.svg"
-                    className="w-5 h-5"
+                    width={20}
+                    height={20}
                     alt="HuggingFace"
                   />
                   View on Hugging Face

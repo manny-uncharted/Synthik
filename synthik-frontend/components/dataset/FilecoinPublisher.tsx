@@ -175,50 +175,6 @@ export default function FilecoinPublisher({
   const [signer, setSigner] = useState<ethers_v5.JsonRpcSigner | null>(null);
   const [showStorageManager, setShowStorageManager] = useState(false);
 
-  // Calculate file size for the dataset
-  const calculateFileSize = useCallback(() => {
-    if (!data) return 0;
-
-    const metadataJson = JSON.stringify({
-      name: config.name,
-      description: config.description,
-      schema: config.schema,
-      totalRows: data.totalRows,
-      format: config.format,
-      license: config.license,
-      visibility: config.visibility,
-      generationTime: data.generationTime,
-      ...(data.tokensUsed && { tokensUsed: data.tokensUsed }),
-      ...(data.cost && { generationCost: data.cost }),
-      version: '1.0.0',
-      timestamp: Date.now(),
-    });
-
-    const serializedData = serializeDataByFormat(data.rows, config.format);
-    return new Blob([metadataJson]).size + new Blob([serializedData]).size;
-  }, [data, config]);
-
-  // Function to serialize data based on the selected format
-  const serializeDataByFormat = useCallback(
-    (
-      rows: Record<string, string | number | boolean | Date | object>[],
-      format: string
-    ): string => {
-      switch (format.toLowerCase()) {
-        case 'csv':
-          return convertToCSV(rows);
-        case 'json':
-          return JSON.stringify(rows);
-        case 'parquet':
-          // For now, fallback to JSON since parquet requires binary handling
-          return JSON.stringify(rows);
-        default:
-          return JSON.stringify(rows);
-      }
-    },
-    []
-  );
-
   // Helper function to convert rows to CSV format
   const convertToCSV = useCallback(
     (
@@ -255,6 +211,50 @@ export default function FilecoinPublisher({
     },
     []
   );
+
+  // Function to serialize data based on the selected format
+  const serializeDataByFormat = useCallback(
+    (
+      rows: Record<string, string | number | boolean | Date | object>[],
+      format: string
+    ): string => {
+      switch (format.toLowerCase()) {
+        case 'csv':
+          return convertToCSV(rows);
+        case 'json':
+          return JSON.stringify(rows);
+        case 'parquet':
+          // For now, fallback to JSON since parquet requires binary handling
+          return JSON.stringify(rows);
+        default:
+          return JSON.stringify(rows);
+      }
+    },
+    [convertToCSV]
+  );
+
+  // Calculate file size for the dataset
+  const calculateFileSize = useCallback(() => {
+    if (!data) return 0;
+
+    const metadataJson = JSON.stringify({
+      name: config.name,
+      description: config.description,
+      schema: config.schema,
+      totalRows: data.totalRows,
+      format: config.format,
+      license: config.license,
+      visibility: config.visibility,
+      generationTime: data.generationTime,
+      ...(data.tokensUsed && { tokensUsed: data.tokensUsed }),
+      ...(data.cost && { generationCost: data.cost }),
+      version: '1.0.0',
+      timestamp: Date.now(),
+    });
+
+    const serializedData = serializeDataByFormat(data.rows, config.format);
+    return new Blob([metadataJson]).size + new Blob([serializedData]).size;
+  }, [data, config, serializeDataByFormat]);
 
   // Initialize provider and signer when wallet is available
   React.useEffect(() => {
@@ -778,6 +778,8 @@ ${
     proofsetsData,
     setPublishProgress,
     setPublishResult,
+    fullDataset,
+    serializeDataByFormat,
   ]);
 
   // Track if we've calculated estimate for current data
@@ -918,7 +920,7 @@ ${
     };
 
     calculateEstimate();
-  }, [data, config, provider, network, address, signer]); // Added dependencies
+  }, [data, config, provider, network, address, signer, proofsetsData?.proofsets, serializeDataByFormat, setPublishProgress, setStorageEstimate]); // Added dependencies
 
   // Track if we've tested Synapse for current provider/signer
   const providerRef = React.useRef(provider);

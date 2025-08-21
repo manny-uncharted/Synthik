@@ -20,7 +20,7 @@ pool.on('error', (err) => {
 });
 
 // Helper function to execute queries with better error handling
-export async function query<T = any>(text: string, params?: any[]): Promise<T[]> {
+export async function query<T = Record<string, unknown>>(text: string, params?: unknown[]): Promise<T[]> {
   let client;
   try {
     client = await pool.connect();
@@ -51,7 +51,7 @@ export async function testConnection(): Promise<boolean> {
 // Check if a table exists
 export async function tableExists(tableName: string): Promise<boolean> {
   try {
-    const result = await query(
+    const result = await query<{ exists: boolean }>(
       `SELECT EXISTS (
         SELECT FROM information_schema.tables 
         WHERE table_schema = 'public' 
